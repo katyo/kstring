@@ -4,16 +4,16 @@ resolver = "2"
 [workspace.package]
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.85.1"  # MSRV
+rust-version = "1.85.1" # MSRV
 include = [
-  "build.rs",
-  "src/**/*",
-  "Cargo.toml",
-  "Cargo.lock",
-  "LICENSE*",
-  "README.md",
-  "benches/**/*",
-  "examples/**/*"
+    "build.rs",
+    "src/**/*",
+    "Cargo.toml",
+    "Cargo.lock",
+    "LICENSE*",
+    "README.md",
+    "benches/**/*",
+    "examples/**/*",
 ]
 
 [package]
@@ -35,11 +35,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.release]
 pre-release-replacements = [
-  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
-  {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
-  {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
-  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
-  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/cobalt-org/kstring/compare/{{tag_name}}...HEAD", exactly=1},
+    { file = "CHANGELOG.md", search = "Unreleased", replace = "{{version}}", min = 1 },
+    { file = "CHANGELOG.md", search = "\\.\\.\\.HEAD", replace = "...{{tag_name}}", exactly = 1 },
+    { file = "CHANGELOG.md", search = "ReleaseDate", replace = "{{date}}", min = 1 },
+    { file = "CHANGELOG.md", search = "<!-- next-header -->", replace = "<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly = 1 },
+    { file = "CHANGELOG.md", search = "<!-- next-url -->", replace = "<!-- next-url -->\n[Unreleased]: https://github.com/cobalt-org/kstring/compare/{{tag_name}}...HEAD", exactly = 1 },
 ]
 
 [features]
@@ -63,11 +63,16 @@ static_assertions = "1.1.0"
 ## `serde` compatibility
 serde = { version = "1.0", optional = true }
 
+## `diesel` compatibility
+diesel = { version = "2.2", optional = true }
+
 document-features = { version = "0.2", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"
 proptest = "1.4.0"
+diesel = { version = "2.2", features = ["sqlite"] }
+libsqlite3-sys = { version = "0.33", features = ["bundled"] }
 
 [[bench]]
 name = "clone"
