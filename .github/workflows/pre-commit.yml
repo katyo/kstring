@@ -5,7 +5,7 @@ permissions: {} # none
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [fork]
 
 env:
   RUST_BACKTRACE: 1

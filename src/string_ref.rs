@@ -1,10 +1,15 @@
-use std::fmt;
+use core::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    ops::Deref,
+};
+use std::{borrow::Borrow, ffi::OsStr, path::Path};
 
-use crate::KStringBase;
-use crate::KStringCowBase;
-
-type StdString = std::string::String;
-type BoxedStr = Box<str>;
+use crate::{
+    backend::{BoxedStr, HeapStr},
+    KString, KStringCow,
+};
 
 /// A reference to a UTF-8 encoded, immutable string.
 #[derive(Copy, Clone)]
@@ -20,7 +25,7 @@ pub(crate) enum KStringRefInner<'s> {
 }
 
 impl<'s> KStringRef<'s> {
-    /// Create a new empty `KStringBase`.
+    /// Create a new empty `KString`.
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
@@ -49,7 +54,7 @@ impl<'s> KStringRef<'s> {
     #[inline]
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_owned<B: crate::backend::HeapStr>(&self) -> KStringBase<B> {
+    pub fn to_owned<B: HeapStr>(&self) -> KString<B> {
         self.inner.to_owned()
     }
 
@@ -63,7 +68,7 @@ impl<'s> KStringRef<'s> {
     /// Convert to a mutable string type, cloning the data if necessary.
     #[inline]
     #[must_use]
-    pub fn into_mut(self) -> StdString {
+    pub fn into_mut(self) -> String {
         self.inner.into_mut()
     }
 }
@@ -71,10 +76,10 @@ impl<'s> KStringRef<'s> {
 impl KStringRefInner<'_> {
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    fn to_owned<B: crate::backend::HeapStr>(&self) -> KStringBase<B> {
+    fn to_owned<B: HeapStr>(&self) -> KString<B> {
         match self {
-            Self::Borrowed(s) => KStringBase::from_ref(s),
-            Self::Singleton(s) => KStringBase::from_static(s),
+            Self::Borrowed(s) => KString::from_ref(s),
+            Self::Singleton(s) => KString::from_static(s),
         }
     }
 
@@ -87,12 +92,12 @@ impl KStringRefInner<'_> {
     }
 
     #[inline]
-    fn into_mut(self) -> StdString {
+    fn into_mut(self) -> String {
         self.as_str().to_owned()
     }
 }
 
-impl std::ops::Deref for KStringRef<'_> {
+impl Deref for KStringRef<'_> {
     type Target = str;
 
     #[inline]
@@ -126,28 +131,28 @@ impl<'s> PartialEq<&'s str> for KStringRef<'s> {
 
 impl PartialEq<String> for KStringRef<'_> {
     #[inline]
-    fn eq(&self, other: &StdString) -> bool {
+    fn eq(&self, other: &String) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
 impl Ord for KStringRef<'_> {
     #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
 impl PartialOrd for KStringRef<'_> {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl std::hash::Hash for KStringRef<'_> {
+impl Hash for KStringRef<'_> {
     #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
@@ -180,21 +185,21 @@ impl AsRef<[u8]> for KStringRef<'_> {
     }
 }
 
-impl AsRef<std::ffi::OsStr> for KStringRef<'_> {
+impl AsRef<OsStr> for KStringRef<'_> {
     #[inline]
-    fn as_ref(&self) -> &std::ffi::OsStr {
+    fn as_ref(&self) -> &OsStr {
         (**self).as_ref()
     }
 }
 
-impl AsRef<std::path::Path> for KStringRef<'_> {
+impl AsRef<Path> for KStringRef<'_> {
     #[inline]
-    fn as_ref(&self) -> &std::path::Path {
-        std::path::Path::new(self)
+    fn as_ref(&self) -> &Path {
+        Path::new(self)
     }
 }
 
-impl std::borrow::Borrow<str> for KStringRef<'_> {
+impl Borrow<str> for KStringRef<'_> {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
@@ -208,23 +213,23 @@ impl Default for KStringRef<'_> {
     }
 }
 
-impl<'s, B: crate::backend::HeapStr> From<&'s KStringBase<B>> for KStringRef<'s> {
+impl<'s, B: HeapStr> From<&'s KString<B>> for KStringRef<'s> {
     #[inline]
-    fn from(other: &'s KStringBase<B>) -> Self {
+    fn from(other: &'s KString<B>) -> Self {
         other.as_ref()
     }
 }
 
-impl<'s, B: crate::backend::HeapStr> From<&'s KStringCowBase<'s, B>> for KStringRef<'s> {
+impl<'s, B: HeapStr> From<&'s KStringCow<'s, B>> for KStringRef<'s> {
     #[inline]
-    fn from(other: &'s KStringCowBase<'s, B>) -> Self {
+    fn from(other: &'s KStringCow<'s, B>) -> Self {
         other.as_ref()
     }
 }
 
-impl<'s> From<&'s StdString> for KStringRef<'s> {
+impl<'s> From<&'s String> for KStringRef<'s> {
     #[inline]
-    fn from(other: &'s StdString) -> Self {
+    fn from(other: &'s String) -> Self {
         KStringRef::from_ref(other.as_str())
     }
 }
@@ -290,9 +295,10 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use core::mem::size_of;
 
     #[test]
     fn test_size() {
-        println!("KStringRef: {}", std::mem::size_of::<KStringRef<'static>>());
+        println!("KStringRef: {}", size_of::<KStringRef<'static>>());
     }
 }

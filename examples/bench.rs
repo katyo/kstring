@@ -1,3 +1,5 @@
+use kstring2 as kstring;
+
 fn main() {
     let mut args = std::env::args();
     let _ = args.next();
@@ -10,9 +12,11 @@ fn main() {
         .unwrap();
     #[allow(clippy::redundant_closure)] // Needed for consistent type
     let method = match method.as_str() {
-        "from_ref" => |s| kstring::KString::from_ref(s),
-        "from_string" => |s| kstring::KString::from_string(String::from(s)),
+        "from_ref" => |s| <kstring::KString>::from_ref(s),
+        "from_string" => |s| <kstring::KString>::from_string(String::from(s)),
         _ => panic!("{:?} unsupported, try `from_ref`, `from_string`", method),
     };
-    (0..count).map(|_| method(&sample)).last();
+    for _ in 0..count {
+        method(&sample);
+    }
 }

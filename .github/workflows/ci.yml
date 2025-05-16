@@ -7,7 +7,7 @@ on:
   pull_request:
   push:
     branches:
-    - master
+    - fork
 
 env:
   RUST_BACKTRACE: 1
@@ -83,13 +83,13 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: nightly
+        toolchain: nightly-2025-05-04
         components: miri
     - uses: Swatinem/rust-cache@v2
     - name: Default features
       run: cargo miri test
     - name: All features
-      run: cargo miri test --all-features
+      run: cargo miri test --features all-miri
     - name: No-default features
       run: cargo miri test --no-default-features --features std
   msrv:

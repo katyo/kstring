@@ -1,7 +1,7 @@
 #[cfg(feature = "diesel")]
 mod test_diesel {
     use diesel::{prelude::*, result::Error, sqlite::SqliteConnection};
-    use kstring::*;
+    use kstring2::*;
 
     // An example struct to represent a table in the database
     #[derive(Debug, PartialEq, Eq, Queryable, Insertable)]

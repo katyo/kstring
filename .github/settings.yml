@@ -43,7 +43,7 @@ labels:
     description: "Help wanted!"
 
 branches:
-  - name: master
+  - name: fork
     protection:
       required_pull_request_reviews: null
       required_conversation_resolution: true

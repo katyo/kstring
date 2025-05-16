@@ -1,3 +1,5 @@
+use kstring2 as kstring;
+
 #[test]
 fn test_search_in_hashmap() {
     let mut m = std::collections::HashMap::<kstring::KString, i32>::new();
