@@ -1,6 +1,27 @@
 use kstring2 as kstring;
 
 #[test]
+fn test_kformat_macro() {
+    use kstring::{kformat, KString};
+
+    let result: KString = kformat!("Hello, {}!", "world");
+    assert_eq!(result.as_str(), "Hello, world!");
+
+    let name = "Alice";
+    let age = 30;
+    let result: KString = kformat!("Name: {}, Age: {}", name, age);
+    assert_eq!(result.as_str(), "Name: Alice, Age: 30");
+
+    let empty = "";
+    let result: KString = kformat!("{}", empty);
+    assert_eq!(result.as_str(), "");
+
+    let number = 42;
+    let result: KString = kformat!("The answer is {}", number);
+    assert_eq!(result.as_str(), "The answer is 42");
+}
+
+#[test]
 fn test_search_in_hashmap() {
     let mut m = std::collections::HashMap::<kstring::KString, i32>::new();
     m.insert("aaa".into(), 17);

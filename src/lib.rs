@@ -47,6 +47,7 @@
 #[cfg(not(feature = "std"))]
 compile_error!("`std` feature is required; reserved for future `no_std` support");
 
+mod format;
 #[cfg(feature = "kstring")]
 mod interop;
 mod stack;
@@ -56,6 +57,7 @@ mod string_ref;
 
 pub mod backend;
 
+pub use format::*;
 pub use stack::StackString;
 pub use string::*;
 pub use string_cow::*;

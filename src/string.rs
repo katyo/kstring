@@ -52,6 +52,11 @@ impl<B> KString<B> {
     }
 }
 
+impl KString {
+    /// Maximum length of string which can be created without alloc in heap
+    pub const MAX_INLINE_LEN: usize = inner::CAPACITY;
+}
+
 impl<B: HeapStr> KString<B> {
     /// Create an owned `KString`.
     #[inline]
@@ -229,6 +234,14 @@ impl<B: HeapStr> Default for KString<B> {
     #[inline]
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<B: HeapStr> From<StackString<{ KString::MAX_INLINE_LEN }>> for KString<B> {
+    fn from(other: StackString<{ KString::MAX_INLINE_LEN }>) -> Self {
+        Self {
+            inner: KStringInner::from_inline(other),
+        }
     }
 }
 
@@ -538,9 +551,9 @@ mod inner {
     const ALIGNED_CAPACITY: usize = size_of::<DefaultStr>() - LEN_SIZE;
 
     #[cfg(feature = "max_inline")]
-    const CAPACITY: usize = MAX_CAPACITY;
+    pub(crate) const CAPACITY: usize = MAX_CAPACITY;
     #[cfg(not(feature = "max_inline"))]
-    const CAPACITY: usize = ALIGNED_CAPACITY;
+    pub(crate) const CAPACITY: usize = ALIGNED_CAPACITY;
 }
 
 #[cfg(feature = "unsafe")]
@@ -743,9 +756,9 @@ mod inner {
     const ALIGNED_CAPACITY: usize = PAYLOAD_SIZE - LEN_SIZE;
 
     #[cfg(feature = "max_inline")]
-    const CAPACITY: usize = MAX_CAPACITY;
+    pub(crate) const CAPACITY: usize = MAX_CAPACITY;
     #[cfg(not(feature = "max_inline"))]
-    const CAPACITY: usize = ALIGNED_CAPACITY;
+    pub(crate) const CAPACITY: usize = ALIGNED_CAPACITY;
 
     const PAYLOAD_PAD_SIZE: usize = TARGET_SIZE - PAYLOAD_SIZE - TAG_SIZE;
     const INLINE_PAD_SIZE: usize = TARGET_SIZE - CAPACITY - LEN_SIZE - TAG_SIZE;

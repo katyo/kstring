@@ -260,6 +260,104 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
             self.len = new_len as u8;
         }
     }
+
+    /// Tries to append a `&str` to the existing `StackString`, if it'll fit within `Self::CAPACITY`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = StackString::<6>::try_new("foo").unwrap();
+    /// assert_eq!(s, "foo");
+    ///
+    /// s.try_push("bar");
+    /// assert_eq!(s, "foobar");
+    ///
+    /// assert!(!s.try_push("baz"));
+    /// ```
+    #[inline]
+    pub fn try_push(&mut self, s: &str) -> bool {
+        let new_len = self.len as usize + s.len();
+        if new_len <= Self::CAPACITY {
+            #[cfg(feature = "unsafe")]
+            unsafe {
+                // SAFETY: We've confirmed `new_len` is within size
+                self.push_unchecked(s)
+            };
+            #[cfg(not(feature = "unsafe"))]
+            self.push(s);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Appends a `&str` to the existing `StackString`.
+    ///
+    /// # Panic
+    ///
+    /// Calling this function with a string that would make the total length larger than `Self::CAPACITY` will panic.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = StackString::<6>::try_new("foo").unwrap();
+    /// assert_eq!(s, "foo");
+    ///
+    /// s.push("bar");
+    /// assert_eq!(s, "foobar");
+    /// ```
+    #[inline]
+    pub fn push(&mut self, s: &str) {
+        let new_len = self.len as usize + s.len();
+        debug_assert!(new_len <= Self::CAPACITY);
+        if let Some(slice) = self.buffer.0.get_mut(self.len as usize..new_len) {
+            slice.copy_from_slice(s.as_bytes());
+        } else {
+            panic!("Appending `{}` would exceed capacity {}", s, Self::CAPACITY);
+        }
+        self.len = new_len as u8;
+    }
+
+    /// Appends a `&str` to the existing `StackString`.
+    ///
+    /// # Safety
+    ///
+    /// Calling this function with a string that would make the total length larger than `Self::CAPACITY` is undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = unsafe {
+    ///     StackString::<6>::new_unchecked("foo")
+    /// };
+    /// assert_eq!(s, "foo");
+    ///
+    /// unsafe {
+    ///     // SAFETY: Literal is short-enough
+    ///     s.push_unchecked("bar");
+    /// }
+    /// assert_eq!(s, "foobar");
+    /// ```
+    #[inline]
+    #[cfg(feature = "unsafe")]
+    pub unsafe fn push_unchecked(&mut self, s: &str) {
+        let new_len = self.len as usize + s.len();
+        debug_assert!(new_len <= Self::CAPACITY);
+        self.buffer
+            .0
+            .get_unchecked_mut(self.len as usize..new_len)
+            .copy_from_slice(s.as_bytes());
+        self.len = new_len as u8;
+    }
 }
 
 impl<const CAPACITY: usize> Default for StackString<CAPACITY> {
@@ -274,6 +372,39 @@ impl<const CAPACITY: usize> Deref for StackString<CAPACITY> {
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl<const CAPACITY: usize> From<&StackString<CAPACITY>> for String {
+    fn from(other: &StackString<CAPACITY>) -> Self {
+        Self::from(other.as_str())
+    }
+}
+
+impl<const CAPACITY: usize> From<StackString<CAPACITY>> for String {
+    fn from(other: StackString<CAPACITY>) -> Self {
+        Self::from(other.as_str())
+    }
+}
+
+impl<const CAPACITY: usize> TryFrom<&str> for StackString<CAPACITY> {
+    type Error = ();
+    fn try_from(other: &str) -> Result<Self, Self::Error> {
+        Self::try_new(other).ok_or(())
+    }
+}
+
+impl<const CAPACITY: usize> TryFrom<&String> for StackString<CAPACITY> {
+    type Error = ();
+    fn try_from(other: &String) -> Result<Self, Self::Error> {
+        Self::try_new(other).ok_or(())
+    }
+}
+
+impl<const CAPACITY: usize> TryFrom<String> for StackString<CAPACITY> {
+    type Error = ();
+    fn try_from(other: String) -> Result<Self, Self::Error> {
+        Self::try_new(&other).ok_or(())
     }
 }
 
