@@ -63,6 +63,29 @@ pub use string::*;
 pub use string_cow::*;
 pub use string_ref::*;
 
+/// Creates a `KString` from a static string literal.
+///
+/// This macro is designed to create `KString` instances directly from string literals,
+/// leveraging the fact that these strings are static and can be safely managed without additional allocations.
+///
+/// # Examples
+///
+/// ```
+/// # use kstring2::{KString, kstring};
+///
+/// let key: KString = kstring!("example_key");
+/// assert_eq!(key, "example_key");
+///
+/// let key2: KString = kstring!("example", "-", "key");
+/// assert_eq!(key2, "example-key");
+/// ```
+#[macro_export]
+macro_rules! kstring {
+    ($($str:literal),*) => {
+        $crate::KString::from_static(concat!($($str),*))
+    };
+}
+
 #[cfg(test)]
 mod test {
     #[test]
