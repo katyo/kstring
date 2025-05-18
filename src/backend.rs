@@ -1,3 +1,7 @@
+use core::fmt;
+use static_assertions::assert_eq_size;
+use std::{rc::Rc, sync::Arc};
+
 #[cfg(feature = "arc")]
 pub(crate) type DefaultStr = crate::backend::ArcStr;
 #[cfg(not(feature = "arc"))]
@@ -5,18 +9,18 @@ pub(crate) type DefaultStr = crate::backend::BoxedStr;
 
 /// Fast allocations, O(n) clones
 pub type BoxedStr = Box<str>;
-static_assertions::assert_eq_size!(DefaultStr, BoxedStr);
+assert_eq_size!(DefaultStr, BoxedStr);
 
 /// Cross-thread, O(1) clones
-pub type ArcStr = std::sync::Arc<str>;
-static_assertions::assert_eq_size!(DefaultStr, ArcStr);
+pub type ArcStr = Arc<str>;
+assert_eq_size!(DefaultStr, ArcStr);
 
 /// O(1) clones
-pub type RcStr = std::rc::Rc<str>;
-static_assertions::assert_eq_size!(DefaultStr, RcStr);
+pub type RcStr = Rc<str>;
+assert_eq_size!(DefaultStr, RcStr);
 
 /// Abstract over different type of heap-allocated strings
-pub trait HeapStr: std::fmt::Debug + Clone + private::Sealed {
+pub trait HeapStr: fmt::Debug + Clone + private::Sealed {
     fn from_str(other: &str) -> Self;
     fn from_string(other: String) -> Self;
     fn from_boxed_str(other: BoxedStr) -> Self;

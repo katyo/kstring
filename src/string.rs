@@ -440,7 +440,12 @@ mod inner {
 
         #[inline]
         pub fn try_inline(other: &str) -> Option<Self> {
-            StackString::try_new(other).map(Self::Inline)
+            StackString::try_new(other).map(Self::from_inline)
+        }
+
+        #[inline]
+        pub fn from_inline(other: StackString<CAPACITY>) -> Self {
+            Self::Inline(other)
         }
     }
 
@@ -453,22 +458,12 @@ mod inner {
 
         #[inline]
         pub(super) fn from_string(other: String) -> Self {
-            if (0..=CAPACITY).contains(&other.len()) {
-                let inline = { StackString::new(other.as_str()) };
-                Self::Inline(inline)
-            } else {
-                Self::from_boxed(other.into_boxed_str())
-            }
+            Self::try_inline(&other).unwrap_or_else(|| Self::from_boxed(other.into_boxed_str()))
         }
 
         #[inline]
         pub(super) fn from_ref(other: &str) -> Self {
-            if (0..=CAPACITY).contains(&other.len()) {
-                let inline = { StackString::new(other) };
-                Self::Inline(inline)
-            } else {
-                Self::Owned(B::from_str(other))
-            }
+            Self::try_inline(other).unwrap_or_else(|| Self::Owned(B::from_str(other)))
         }
 
         #[inline]
@@ -572,9 +567,14 @@ mod inner {
 
         #[inline]
         pub fn try_inline(other: &str) -> Option<Self> {
-            StackString::try_new(other).map(|inline| Self {
+            StackString::try_new(other).map(Self::from_inline)
+        }
+
+        #[inline]
+        pub fn from_inline(inline: StackString<CAPACITY>) -> Self {
+            Self {
                 inline: InlineVariant::new(inline),
-            })
+            }
         }
 
         #[inline]
@@ -598,36 +598,19 @@ mod inner {
 
         #[inline]
         pub(super) fn from_string(other: String) -> Self {
-            if (0..=CAPACITY).contains(&other.len()) {
-                let payload = unsafe {
-                    // SAFETY: range check ensured this is always safe
-                    StackString::new_unchecked(other.as_str())
-                };
-                Self {
-                    inline: InlineVariant::new(payload),
-                }
-            } else {
-                Self::from_boxed(other.into_boxed_str())
-            }
+            KStringInner::try_inline(&other)
+                .unwrap_or_else(|| Self::from_boxed(other.into_boxed_str()))
         }
 
         #[inline]
         pub(super) fn from_ref(other: &str) -> Self {
-            if (0..=CAPACITY).contains(&other.len()) {
-                let payload = unsafe {
-                    // SAFETY: range check ensured this is always safe
-                    StackString::new_unchecked(other)
-                };
-                Self {
-                    inline: InlineVariant::new(payload),
-                }
-            } else {
+            KStringInner::try_inline(other).unwrap_or_else(|| {
                 #[allow(clippy::useless_conversion)]
                 let payload = B::from_str(other);
                 Self {
                     owned: ManuallyDrop::new(OwnedVariant::new(payload)),
                 }
-            }
+            })
         }
 
         #[inline]
@@ -859,13 +842,20 @@ mod inner {
         }
     }
 
+    /// Represents the internal tag used to distinguish between different variants of `KStringInner`.
+    ///
+    /// The `Tag` type is crucial for determining whether a `KStringInner` instance holds a singleton,
+    /// owned, or inline string. This helps in safely accessing the correct variant without undefined behavior.
     #[derive(Copy, Clone, PartialEq, Eq)]
     #[repr(transparent)]
     struct Tag(u8);
 
     impl Tag {
+        /// Represents a `KStringInner` variant that holds a reference to `'static` string data.
         const SINGLETON: Tag = Tag(0);
+        /// Represents a `KStringInner` variant that owns the string data on the heap.
         const OWNED: Tag = Tag(u8::MAX);
+        /// Represents a `KStringInner` variant that holds the string data inline within the struct.
         const INLINE: Tag = Tag(1);
 
         #[inline]

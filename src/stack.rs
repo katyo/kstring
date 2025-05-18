@@ -1,4 +1,11 @@
-use std::fmt;
+use core::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    ops::Deref,
+    str,
+};
+use std::{borrow::Borrow, ffi::OsStr, path::Path};
 
 pub(crate) type Len = u8;
 
@@ -36,8 +43,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     #[inline]
     #[must_use]
     pub fn try_new(s: &str) -> Option<Self> {
-        let len = s.len();
-        if len <= Self::CAPACITY {
+        if s.len() <= Self::CAPACITY {
             #[cfg(feature = "unsafe")]
             let stack = {
                 unsafe {
@@ -262,7 +268,7 @@ impl<const CAPACITY: usize> Default for StackString<CAPACITY> {
     }
 }
 
-impl<const CAPACITY: usize> std::ops::Deref for StackString<CAPACITY> {
+impl<const CAPACITY: usize> Deref for StackString<CAPACITY> {
     type Target = str;
 
     #[inline]
@@ -303,42 +309,42 @@ impl<const CAPACITY: usize> PartialEq<String> for StackString<CAPACITY> {
 
 impl<const CAPACITY: usize> Ord for StackString<CAPACITY> {
     #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
 impl<const C1: usize, const C2: usize> PartialOrd<StackString<C1>> for StackString<C2> {
     #[inline]
-    fn partial_cmp(&self, other: &StackString<C1>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &StackString<C1>) -> Option<Ordering> {
         self.as_str().partial_cmp(other.as_str())
     }
 }
 
 impl<const CAPACITY: usize> PartialOrd<str> for StackString<CAPACITY> {
     #[inline]
-    fn partial_cmp(&self, other: &str) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &str) -> Option<Ordering> {
         self.as_str().partial_cmp(other)
     }
 }
 
 impl<const CAPACITY: usize> PartialOrd<&str> for StackString<CAPACITY> {
     #[inline]
-    fn partial_cmp(&self, other: &&str) -> Option<std::cmp::Ordering> {
-        self.as_str().partial_cmp(other)
+    fn partial_cmp(&self, other: &&str) -> Option<Ordering> {
+        self.as_str().partial_cmp(*other)
     }
 }
 
 impl<const CAPACITY: usize> PartialOrd<String> for StackString<CAPACITY> {
     #[inline]
-    fn partial_cmp(&self, other: &String) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
         self.as_str().partial_cmp(other.as_str())
     }
 }
 
-impl<const CAPACITY: usize> std::hash::Hash for StackString<CAPACITY> {
+impl<const CAPACITY: usize> Hash for StackString<CAPACITY> {
     #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
@@ -371,21 +377,21 @@ impl<const CAPACITY: usize> AsRef<[u8]> for StackString<CAPACITY> {
     }
 }
 
-impl<const CAPACITY: usize> AsRef<std::ffi::OsStr> for StackString<CAPACITY> {
+impl<const CAPACITY: usize> AsRef<OsStr> for StackString<CAPACITY> {
     #[inline]
-    fn as_ref(&self) -> &std::ffi::OsStr {
+    fn as_ref(&self) -> &OsStr {
         (**self).as_ref()
     }
 }
 
-impl<const CAPACITY: usize> AsRef<std::path::Path> for StackString<CAPACITY> {
+impl<const CAPACITY: usize> AsRef<Path> for StackString<CAPACITY> {
     #[inline]
-    fn as_ref(&self) -> &std::path::Path {
-        std::path::Path::new(self)
+    fn as_ref(&self) -> &Path {
+        Path::new(self)
     }
 }
 
-impl<const CAPACITY: usize> std::borrow::Borrow<str> for StackString<CAPACITY> {
+impl<const CAPACITY: usize> Borrow<str> for StackString<CAPACITY> {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
@@ -410,29 +416,30 @@ impl<const CAPACITY: usize> StrBuffer<CAPACITY> {
         if let Some(buffer) = buffer.0.get_mut(..len) {
             buffer.copy_from_slice(s.as_bytes());
         } else {
-            panic!("`{}` is larger than capacity {}", s, CAPACITY);
+            panic!("`{s}` is larger than capacity {CAPACITY}");
         }
         buffer
     }
+}
 
+#[cfg(not(feature = "unsafe"))]
+impl<const CAPACITY: usize> StrBuffer<CAPACITY> {
     #[inline]
-    #[cfg(not(feature = "unsafe"))]
     pub(crate) fn as_str(&self, len: usize) -> &str {
         let slice = self.0.get(..len).unwrap();
-        std::str::from_utf8(slice).unwrap()
+        str::from_utf8(slice).unwrap()
     }
 
     #[inline]
-    #[cfg(not(feature = "unsafe"))]
     pub(crate) fn as_mut_str(&mut self, len: usize) -> &mut str {
         let slice = self.0.get_mut(..len).unwrap();
-        std::str::from_utf8_mut(slice).unwrap()
+        str::from_utf8_mut(slice).unwrap()
     }
 }
 
+#[cfg(feature = "unsafe")]
 impl<const CAPACITY: usize> StrBuffer<CAPACITY> {
     #[inline]
-    #[cfg(feature = "unsafe")]
     pub(crate) unsafe fn new_unchecked(s: &str) -> Self {
         let len = s.len();
         debug_assert!(len <= CAPACITY);
@@ -445,17 +452,15 @@ impl<const CAPACITY: usize> StrBuffer<CAPACITY> {
     }
 
     #[inline]
-    #[cfg(feature = "unsafe")]
     pub(crate) unsafe fn as_str_unchecked(&self, len: usize) -> &str {
         let slice = self.0.get_unchecked(..len);
-        std::str::from_utf8_unchecked(slice)
+        str::from_utf8_unchecked(slice)
     }
 
     #[inline]
-    #[cfg(feature = "unsafe")]
     pub(crate) unsafe fn as_mut_str_unchecked(&mut self, len: usize) -> &mut str {
         let slice = self.0.get_unchecked_mut(..len);
-        std::str::from_utf8_unchecked_mut(slice)
+        str::from_utf8_unchecked_mut(slice)
     }
 }
 
