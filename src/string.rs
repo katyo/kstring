@@ -88,8 +88,8 @@ impl<B: HeapStr> KString<B> {
     /// Get a reference to the `KString`.
     #[inline]
     #[must_use]
-    pub fn as_ref(&self) -> KStringRef<'_> {
-        self.inner.as_ref()
+    pub fn get_ref(&self) -> KStringRef<'_> {
+        self.inner.get_ref()
     }
 
     /// Extracts a string slice containing the entire `KString`.
@@ -480,7 +480,7 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn as_ref(&self) -> KStringRef<'_> {
+        pub(super) fn get_ref(&self) -> KStringRef<'_> {
             match self {
                 Self::Singleton(s) => KStringRef::from_static(s),
                 Self::Inline(s) => KStringRef::from_ref(s.as_str()),
@@ -627,7 +627,7 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn as_ref(&self) -> KStringRef<'_> {
+        pub(super) fn get_ref(&self) -> KStringRef<'_> {
             let tag = self.tag();
             unsafe {
                 // SAFETY: `tag` ensures access to correct variant

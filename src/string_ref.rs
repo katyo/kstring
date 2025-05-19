@@ -216,14 +216,14 @@ impl Default for KStringRef<'_> {
 impl<'s, B: HeapStr> From<&'s KString<B>> for KStringRef<'s> {
     #[inline]
     fn from(other: &'s KString<B>) -> Self {
-        other.as_ref()
+        other.get_ref()
     }
 }
 
 impl<'s, B: HeapStr> From<&'s KStringCow<'s, B>> for KStringRef<'s> {
     #[inline]
     fn from(other: &'s KStringCow<'s, B>) -> Self {
-        other.as_ref()
+        other.get_ref()
     }
 }
 

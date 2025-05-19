@@ -79,8 +79,8 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     /// Get a reference to the `KString`.
     #[inline]
     #[must_use]
-    pub fn as_ref(&self) -> KStringRef<'_> {
-        self.inner.as_ref()
+    pub fn get_ref(&self) -> KStringRef<'_> {
+        self.inner.get_ref()
     }
 
     /// Clone the data into an owned-type.
@@ -121,10 +121,10 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
 
 impl<'s, B: HeapStr> KStringCowInner<'s, B> {
     #[inline]
-    fn as_ref(&self) -> KStringRef<'_> {
+    fn get_ref(&self) -> KStringRef<'_> {
         match self {
             Self::Borrowed(s) => KStringRef::from_ref(s),
-            Self::Owned(s) => s.as_ref(),
+            Self::Owned(s) => s.get_ref(),
         }
     }
 
@@ -289,7 +289,7 @@ impl<B: HeapStr> From<KString<B>> for KStringCow<'_, B> {
 impl<'s, B: HeapStr> From<&'s KString<B>> for KStringCow<'s, B> {
     #[inline]
     fn from(other: &'s KString<B>) -> Self {
-        let other = other.as_ref();
+        let other = other.get_ref();
         other.into()
     }
 }
