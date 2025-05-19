@@ -124,6 +124,22 @@ impl<B: HeapStr> KString<B> {
         Self::from_string(String::from_utf8_unchecked(bytes))
     }
 
+    /// Creates a new `KString` from a UTF-16 byte slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KString;
+    ///
+    /// let sparkle_heart = [0xD83D, 0xDC96];
+    /// let kstr = <KString>::from_utf16(&sparkle_heart).unwrap();
+    /// assert_eq!(&kstr, "💖");
+    /// ```
+    #[inline]
+    pub fn from_utf16(other: &[u16]) -> Result<Self, std::string::FromUtf16Error> {
+        String::from_utf16(other).map(Self::from_string)
+    }
+
     /// Get a reference to the `KString`.
     #[inline]
     #[must_use]
