@@ -358,6 +358,108 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
             .copy_from_slice(s.as_bytes());
         self.len = new_len as u8;
     }
+
+    /// Tries to append a `char` to the existing `StackString`, if it'll fit within `Self::CAPACITY`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = StackString::<5>::try_new("Hell").unwrap();
+    /// assert_eq!(s, "Hell");
+    ///
+    /// s.try_push_char('o');
+    /// assert_eq!(s, "Hello");
+    ///
+    /// assert!(!s.try_push_char('b'));
+    /// ```
+    #[inline]
+    pub fn try_push_char(&mut self, c: char) -> bool {
+        let new_len = self.len as usize + c.len_utf8();
+        if new_len <= Self::CAPACITY {
+            #[cfg(feature = "unsafe")]
+            unsafe {
+                // SAFETY: We've confirmed `new_len` is within size
+                self.push_char_unchecked(c)
+            };
+            #[cfg(not(feature = "unsafe"))]
+            self.push_char(c);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Appends a `char` to the existing `StackString`.
+    ///
+    /// # Panic
+    ///
+    /// Calling this function with a character that would make the total length larger than `Self::CAPACITY` will panic.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = StackString::<5>::try_new("Hell").unwrap();
+    /// assert_eq!(s, "Hell");
+    ///
+    /// s.push_char('o');
+    /// assert_eq!(s, "Hello");
+    /// ```
+    #[inline]
+    pub fn push_char(&mut self, c: char) {
+        let new_len = self.len as usize + c.len_utf8();
+        debug_assert!(new_len <= Self::CAPACITY);
+        let mut buf = [0; 4];
+        let s = c.encode_utf8(&mut buf);
+        if let Some(slice) = self.buffer.0.get_mut(self.len as usize..new_len) {
+            slice.copy_from_slice(s.as_bytes());
+        } else {
+            panic!("Appending `{}` would exceed capacity {}", c, Self::CAPACITY);
+        }
+        self.len = new_len as u8;
+    }
+
+    /// Appends a `char` to the existing `StackString`.
+    ///
+    /// # Safety
+    ///
+    /// Calling this function with a character that would make the total length larger than `Self::CAPACITY` is undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use kstring2::StackString;
+    /// let mut s = unsafe {
+    ///     StackString::<5>::new_unchecked("Hell")
+    /// };
+    /// assert_eq!(s, "Hell");
+    ///
+    /// unsafe {
+    ///     // SAFETY: Literal is short-enough
+    ///     s.push_char_unchecked('o');
+    /// }
+    /// assert_eq!(s, "Hello");
+    /// ```
+    #[inline]
+    #[cfg(feature = "unsafe")]
+    pub unsafe fn push_char_unchecked(&mut self, c: char) {
+        let new_len = self.len as usize + c.len_utf8();
+        debug_assert!(new_len <= Self::CAPACITY);
+        let mut buf = [0; 4];
+        let s = c.encode_utf8(&mut buf);
+        self.buffer
+            .0
+            .get_unchecked_mut(self.len as usize..new_len)
+            .copy_from_slice(s.as_bytes());
+        self.len = new_len as u8;
+    }
 }
 
 impl<const CAPACITY: usize> Default for StackString<CAPACITY> {
