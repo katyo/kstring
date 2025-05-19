@@ -10,6 +10,7 @@ use std::{
     borrow::{Borrow, Cow},
     ffi::OsStr,
     path::Path,
+    string::FromUtf8Error,
 };
 
 use crate::{
@@ -83,6 +84,44 @@ impl<B: HeapStr> KString<B> {
         Self {
             inner: KStringInner::from_ref(other),
         }
+    }
+
+    /// Creates a new `KString` from a UTF-8 byte slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KString;
+    ///
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    /// let kstr = <KString>::from_utf8(sparkle_heart).unwrap();
+    /// assert_eq!(&kstr, "💖");
+    /// ```
+    #[inline]
+    pub fn from_utf8(vec: Vec<u8>) -> Result<Self, FromUtf8Error> {
+        String::from_utf8(vec).map(Self::from_string)
+    }
+
+    /// Creates a new `KString` from a UTF-8 byte slice without checking that the bytes are valid UTF-8.
+    ///
+    /// # Safety
+    ///
+    /// The bytes passed in must be valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KString;
+    ///
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    /// let kstr = unsafe { <KString>::from_utf8_unchecked(sparkle_heart) };
+    /// assert_eq!(&kstr, "💖");
+    /// ```
+    #[cfg(feature = "unsafe")]
+    #[inline]
+    #[must_use]
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> Self {
+        Self::from_string(String::from_utf8_unchecked(bytes))
     }
 
     /// Get a reference to the `KString`.

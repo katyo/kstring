@@ -3,6 +3,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     ops::Deref,
+    str::Utf8Error,
 };
 use std::{borrow::Borrow, ffi::OsStr, path::Path};
 
@@ -48,6 +49,48 @@ impl<'s> KStringRef<'s> {
         Self {
             inner: KStringRefInner::Borrowed(other),
         }
+    }
+
+    /// Creates a new `KStringRef` from a UTF-8 byte slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KStringRef;
+    ///
+    /// let bytes = [240, 159, 146, 150];
+    /// let kstr_ref = KStringRef::from_utf8(&bytes).unwrap();
+    /// assert_eq!(kstr_ref.as_str(), "💖");
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slice is not valid UTF-8.
+    #[inline]
+    pub fn from_utf8(v: &'s [u8]) -> Result<Self, Utf8Error> {
+        core::str::from_utf8(v).map(Self::from_ref)
+    }
+
+    /// Creates a new `KStringRef` from a UTF-8 byte slice without checking.
+    ///
+    /// # Safety
+    ///
+    /// The bytes must be valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KStringRef;
+    ///
+    /// let bytes = [240, 159, 146, 150];
+    /// let kstr_ref = unsafe { KStringRef::from_utf8_unchecked(&bytes) };
+    /// assert_eq!(kstr_ref.as_str(), "💖");
+    /// ```
+    #[cfg(feature = "unsafe")]
+    #[inline]
+    #[must_use]
+    pub unsafe fn from_utf8_unchecked(v: &'s [u8]) -> Self {
+        Self::from_ref(core::str::from_utf8_unchecked(v))
     }
 
     /// Clone the data into an owned-type.

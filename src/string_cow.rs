@@ -4,7 +4,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     ops::Deref,
-    str::FromStr,
+    str::{from_utf8, from_utf8_unchecked, FromStr, Utf8Error},
 };
 use std::{
     borrow::{Borrow, Cow},
@@ -74,6 +74,48 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
         Self {
             inner: KStringCowInner::Borrowed(other),
         }
+    }
+
+    /// Creates a new `KStringCow` from a UTF-8 byte slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KStringCow;
+    ///
+    /// let bytes = [240, 159, 146, 150];
+    /// let kstr_cow = <KStringCow>::from_utf8(&bytes).unwrap();
+    /// assert_eq!(&kstr_cow, "💖");
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slice is not valid UTF-8.
+    #[inline]
+    pub fn from_utf8(other: &'s [u8]) -> Result<Self, Utf8Error> {
+        from_utf8(other).map(Self::from_ref)
+    }
+
+    /// Creates a new `KStringCow` from a UTF-8 byte slice without checking.
+    ///
+    /// # Safety
+    ///
+    /// The bytes must be valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kstring2::KStringCow;
+    ///
+    /// let bytes = [240, 159, 146, 150];
+    /// let kstr_cow = unsafe { <KStringCow>::from_utf8_unchecked(&bytes) };
+    /// assert_eq!(&kstr_cow, "💖");
+    /// ```
+    #[cfg(feature = "unsafe")]
+    #[inline]
+    #[must_use]
+    pub unsafe fn from_utf8_unchecked(other: &'s [u8]) -> Self {
+        Self::from_ref(from_utf8_unchecked(other))
     }
 
     /// Get a reference to the `KString`.
