@@ -32,7 +32,7 @@ impl<B> KString<B> {
     /// Create a new empty `KString`.
     #[inline]
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self::EMPTY
     }
 
