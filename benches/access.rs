@@ -57,13 +57,13 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KString::from_static", len),
             &len,
             |b, _| {
-                let uut = <kstring2::KString>::from_static(fixture);
+                let uut = <lstring::KString>::from_static(fixture);
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
         );
         group.bench_with_input(BenchmarkId::new("KString::from_ref", len), &len, |b, _| {
-            let uut = <kstring2::KString>::from_ref(fixture);
+            let uut = <lstring::KString>::from_ref(fixture);
             let uut = criterion::black_box(uut);
             b.iter(|| uut.is_empty())
         });
@@ -71,7 +71,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KString::from_string", len),
             &len,
             |b, _| {
-                let uut = <kstring2::KString>::from_string(String::from(*fixture));
+                let uut = <lstring::KString>::from_string(String::from(*fixture));
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
@@ -81,7 +81,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KStringCow::from_static", len),
             &len,
             |b, _| {
-                let uut = <kstring2::KStringCow>::from_static(fixture);
+                let uut = <lstring::KStringCow>::from_static(fixture);
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
@@ -91,7 +91,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KStringCow::from_ref", len),
             &len,
             |b, _| {
-                let uut = <kstring2::KStringCow>::from_ref(fixture);
+                let uut = <lstring::KStringCow>::from_ref(fixture);
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
@@ -101,7 +101,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KStringCow::from_string", len),
             &len,
             |b, _| {
-                let uut = <kstring2::KStringCow>::from_string(String::from(*fixture));
+                let uut = <lstring::KStringCow>::from_string(String::from(*fixture));
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
@@ -111,7 +111,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KStringRef::from_static", len),
             &len,
             |b, _| {
-                let uut = kstring2::KStringRef::from_static(fixture);
+                let uut = lstring::KStringRef::from_static(fixture);
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },
@@ -121,7 +121,7 @@ fn bench_access(c: &mut Criterion) {
             BenchmarkId::new("KStringRef::from_ref", len),
             &len,
             |b, _| {
-                let uut = kstring2::KStringRef::from_ref(fixture);
+                let uut = lstring::KStringRef::from_ref(fixture);
                 let uut = criterion::black_box(uut);
                 b.iter(|| uut.is_empty())
             },

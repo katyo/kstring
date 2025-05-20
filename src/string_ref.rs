@@ -56,7 +56,7 @@ impl<'s> KStringRef<'s> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringRef;
+    /// use lstring::KStringRef;
     ///
     /// let bytes = [240, 159, 146, 150];
     /// let kstr_ref = KStringRef::from_utf8(&bytes).unwrap();
@@ -80,7 +80,7 @@ impl<'s> KStringRef<'s> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringRef;
+    /// use lstring::KStringRef;
     ///
     /// let bytes = [240, 159, 146, 150];
     /// let kstr_ref = unsafe { KStringRef::from_utf8_unchecked(&bytes) };

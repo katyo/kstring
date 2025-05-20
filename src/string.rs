@@ -91,7 +91,7 @@ impl<B: HeapStr> KString<B> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KString;
+    /// use lstring::KString;
     ///
     /// let sparkle_heart = vec![240, 159, 146, 150];
     /// let kstr = <KString>::from_utf8(sparkle_heart).unwrap();
@@ -111,7 +111,7 @@ impl<B: HeapStr> KString<B> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KString;
+    /// use lstring::KString;
     ///
     /// let sparkle_heart = vec![240, 159, 146, 150];
     /// let kstr = unsafe { <KString>::from_utf8_unchecked(sparkle_heart) };
@@ -129,7 +129,7 @@ impl<B: HeapStr> KString<B> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KString;
+    /// use lstring::KString;
     ///
     /// let sparkle_heart = [0xD83D, 0xDC96];
     /// let kstr = <KString>::from_utf16(&sparkle_heart).unwrap();

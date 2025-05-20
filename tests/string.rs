@@ -1,4 +1,4 @@
-use kstring2 as kstring;
+use lstring as kstring;
 
 #[test]
 fn test_kformat_macro() {

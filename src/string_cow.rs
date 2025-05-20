@@ -81,7 +81,7 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringCow;
+    /// use lstring::KStringCow;
     ///
     /// let bytes = [240, 159, 146, 150];
     /// let kstr_cow = <KStringCow>::from_utf8(&bytes).unwrap();
@@ -105,7 +105,7 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringCow;
+    /// use lstring::KStringCow;
     ///
     /// let bytes = [240, 159, 146, 150];
     /// let kstr_cow = unsafe { <KStringCow>::from_utf8_unchecked(&bytes) };

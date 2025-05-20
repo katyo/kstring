@@ -4,17 +4,23 @@
 //!
 //! String creation
 //! ```rust
-//! # use kstring2::{KString, KStringCow};
-//! // Explicit
+//! # use lstring::{kformat, kstring, KString};
+//! // Explicit (static)
 //! let literal = <KString>::from_static("literal");
-//! // Implicit
-//! let literal = <KString>::from("literal");
+//! // Using macro (static)
+//! let literal: KString = kstring!("literal");
+//! // Multiple literals will be concatenated
+//! const CONST_STRING: KString = kstring!("const", "ant");
+//! // Macro also accepts constants
+//! const HELLO_WORLD: &str = "Hello world!";
+//! static STATIC_STRING: KString = kstring!(HELLO_WORLD);
 //!
-//! // Explicit
+//! // Explicit (inline)
 //! let inline = <KString>::try_inline("stack").unwrap();
 //! let inline = <KString>::from_ref("stack");
 //!
-//! let formatted: KStringCow = format!("Hello {} and {}", literal, inline).into();
+//! // Formatted
+//! let formatted: KString = kformat!("Hello {literal} and {inline}");
 //! ```
 //!
 //! # Background
@@ -35,8 +41,14 @@
 //! - Use `Box<str>` rather than `String` to use less memory.
 //!
 //! Significant changes:
-//! - Because `From<&'static str>` is unsound it changed to `From<&str>`. To instantiate //! from static str use `KString::from_static` instead of `From::from`.
-//! - Added default generic to types `KStringBase` and `KStringCowBase` which renamed to `KString` and `KStringCow`. Corresponding type aliases is removed. To instantiate types with default backend wrap it with angle brackets (`KString::from_ref("abc")` => `<KString>::from_ref("abc")`).
+//! - Because `From<&'static str>` is unsound it changed to `From<&str>`. To instantiate
+//!   from static str use [`KString::from_static`] instead of [`From::from`] (or [`kstring`](crate::kstring) macro).
+//! - Added default generic to types `KStringBase` and `KStringCowBase` which renamed
+//!   to [`KString`] and [`KStringCow`]. Corresponding type aliases is removed. To instantiate
+//!   types with default backend wrap it with angle brackets (`KString::from_ref("abc")` =>
+//!   `<KString>::from_ref("abc")`).
+//! - Added `KStringWriter` and `kformat` macros. Also added `FromIterator` trait impls.
+//! - Added `from_utf8` and `from_utf16` functions.
 //!
 //! # Feature Flags
 //!
@@ -71,7 +83,7 @@ pub use string_ref::*;
 /// # Examples
 ///
 /// ```
-/// # use kstring2::{KString, kstring};
+/// # use lstring::{KString, kstring};
 ///
 /// let key1: KString = kstring!("example_key");
 /// assert_eq!(key1, "example_key");

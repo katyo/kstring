@@ -11,7 +11,7 @@ use std::{borrow::Cow, string::String as StdString};
 /// # Examples
 ///
 /// ```
-/// # use kstring2::{kformat, KString};
+/// # use lstring::{kformat, KString};
 /// let s: KString = kformat!("Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!");
 /// ```
@@ -35,7 +35,7 @@ macro_rules! kformat {
 /// # Examples
 ///
 /// ```
-/// use kstring2::{KString, KStringWriter};
+/// use lstring::{KString, KStringWriter};
 /// use core::fmt::Write;
 ///
 /// let mut writer = KStringWriter::default();
@@ -81,7 +81,7 @@ impl KStringWriter {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringWriter;
+    /// use lstring::KStringWriter;
     ///
     /// let mut writer = KStringWriter::default();
     /// writer.push('a');
@@ -106,7 +106,7 @@ impl KStringWriter {
     /// # Examples
     ///
     /// ```
-    /// use kstring2::KStringWriter;
+    /// use lstring::KStringWriter;
     ///
     /// let mut writer = KStringWriter::default();
     /// writer.push_str("abc");

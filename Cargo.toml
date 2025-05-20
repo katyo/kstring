@@ -17,7 +17,7 @@ include = [
 ]
 
 [package]
-name = "kstring2"
+name = "lstring"
 version = "2.0.2"
 description = "Key String: optimized for map keys"
 authors = ["Ed Page <eopage@gmail.com>", "K. <kayo@illumium.org>"]

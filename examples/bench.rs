@@ -1,4 +1,4 @@
-use kstring2 as kstring;
+use lstring as kstring;
 
 fn main() {
     let mut args = std::env::args();

@@ -34,7 +34,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let s = StackString::<3>::try_new("foo");
     /// assert_eq!(s.as_deref(), Some("foo"));
     /// let s = StackString::<3>::try_new("foobar");
@@ -70,7 +70,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let s = StackString::<3>::new("foo");
     /// assert_eq!(s, "foo");
     /// ```
@@ -94,7 +94,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let s = unsafe {
     ///     // SAFETY: Literal is short-enough
     ///     StackString::<3>::new_unchecked("foo")
@@ -118,7 +118,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let s = StackString::<3>::try_new("foo").unwrap();
     ///
     /// assert_eq!("foo", s.as_str());
@@ -144,7 +144,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<6>::try_new("foobar").unwrap();
     /// let s_mut_str = s.as_mut_str();
     ///
@@ -175,7 +175,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let a = StackString::<3>::try_new("foo").unwrap();
     /// assert_eq!(a.len(), 3);
     ///
@@ -196,7 +196,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut v = StackString::<20>::EMPTY;
     /// assert!(v.is_empty());
     ///
@@ -216,7 +216,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<3>::try_new("foo").unwrap();
     ///
     /// s.clear();
@@ -246,7 +246,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<5>::try_new("hello").unwrap();
     ///
     /// s.truncate(2);
@@ -268,7 +268,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<6>::try_new("foo").unwrap();
     /// assert_eq!(s, "foo");
     ///
@@ -305,7 +305,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<6>::try_new("foo").unwrap();
     /// assert_eq!(s, "foo");
     ///
@@ -335,7 +335,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = unsafe {
     ///     StackString::<6>::new_unchecked("foo")
     /// };
@@ -366,7 +366,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<5>::try_new("Hell").unwrap();
     /// assert_eq!(s, "Hell");
     ///
@@ -403,7 +403,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = StackString::<5>::try_new("Hell").unwrap();
     /// assert_eq!(s, "Hell");
     ///
@@ -435,7 +435,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     /// Basic usage:
     ///
     /// ```
-    /// # use kstring2::StackString;
+    /// # use lstring::StackString;
     /// let mut s = unsafe {
     ///     StackString::<5>::new_unchecked("Hell")
     /// };
