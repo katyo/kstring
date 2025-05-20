@@ -314,6 +314,13 @@ impl<'de: 's, 's> serde::Deserialize<'de> for KStringRef<'s> {
     }
 }
 
+#[cfg(feature = "quote")]
+impl quote::ToTokens for KStringRef<'_> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        self.as_str().to_tokens(tokens);
+    }
+}
+
 #[cfg(feature = "diesel")]
 #[derive(diesel::expression::AsExpression)]
 #[diesel(foreign_derive)]

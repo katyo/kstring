@@ -44,7 +44,7 @@ pre-release-replacements = [
 [features]
 default = ["std", "unsafe"]
 
-all-miri = ["std", "serde", "kstring", "unsafe", "arc", "max_inline", "unstable_bench_subset", "document-features"]
+all-miri = ["std", "serde", "kstring", "quote", "unsafe", "arc", "max_inline", "unstable_bench_subset", "document-features"]
 
 ## Allow use of `std`
 std = []
@@ -57,6 +57,8 @@ max_inline = []
 unsafe = []
 
 unstable_bench_subset = []
+
+quote = ["dep:quote", "proc-macro2"]
 
 [dependencies]
 static_assertions = "1.1.0"
@@ -71,6 +73,14 @@ optional = true
 
 [dependencies.kstring]
 version = "2"
+optional = true
+
+[dependencies.quote]
+version = "1"
+optional = true
+
+[dependencies.proc-macro2]
+version = "1"
 optional = true
 
 [dependencies.document-features]

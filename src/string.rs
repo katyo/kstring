@@ -444,6 +444,13 @@ impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
     }
 }
 
+#[cfg(feature = "quote")]
+impl<B: HeapStr> quote::ToTokens for KString<B> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        self.as_str().to_tokens(tokens);
+    }
+}
+
 #[cfg(feature = "diesel")]
 #[derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)]
 #[diesel(foreign_derive)]

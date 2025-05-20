@@ -429,7 +429,9 @@ dependencies = [
  "document-features",
  "kstring",
  "libsqlite3-sys",
+ "proc-macro2",
  "proptest",
+ "quote",
  "serde",
  "static_assertions",
 ]

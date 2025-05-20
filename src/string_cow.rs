@@ -421,6 +421,13 @@ impl<'de, B: HeapStr> serde::Deserialize<'de> for KStringCow<'_, B> {
     }
 }
 
+#[cfg(feature = "quote")]
+impl<B: HeapStr> quote::ToTokens for KStringCow<'_, B> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        self.as_str().to_tokens(tokens);
+    }
+}
+
 #[cfg(feature = "diesel")]
 #[derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)]
 #[diesel(foreign_derive)]
