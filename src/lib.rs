@@ -73,16 +73,44 @@ pub use string_ref::*;
 /// ```
 /// # use kstring2::{KString, kstring};
 ///
-/// let key: KString = kstring!("example_key");
-/// assert_eq!(key, "example_key");
+/// let key1: KString = kstring!("example_key");
+/// assert_eq!(key1, "example_key");
 ///
 /// let key2: KString = kstring!("example", "-", "key");
 /// assert_eq!(key2, "example-key");
+///
+/// const CONST_STR: &str = "example_key";
+/// let key3: KString = kstring!(CONST_STR);
+/// assert_eq!(key3, "example_key");
+///
+/// static STATIC_STR: &str = "example-key";
+/// let key4: KString = kstring!(STATIC_STR);
+/// assert_eq!(key4, "example-key");
+///
+/// struct Strs<'a> {
+///     a: &'a str,
+///     b: [&'a str; 2],
+/// }
+///
+/// static DATA: Strs<'static> = Strs {
+///     a: "example",
+///     b: ["hello", "world"],
+/// };
+///
+/// let key5: KString = kstring!(DATA.a);
+/// assert_eq!(key5, "example");
+/// let key6: KString = kstring!(DATA.b[0]);
+/// assert_eq!(key6, "hello");
+/// let key7: KString = kstring!(DATA.b[1]);
+/// assert_eq!(key7, "world");
 /// ```
 #[macro_export]
 macro_rules! kstring {
     ($($str:literal),*) => {
         $crate::KString::from_static(concat!($($str),*))
+    };
+    ($str:expr) => {
+        $crate::KString::from_static($str)
     };
 }
 
