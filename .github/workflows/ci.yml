@@ -8,6 +8,8 @@ on:
   push:
     branches:
     - fork
+    tags:
+    - '[0-9]+.[0-9]+.[0-9]+'
 
 env:
   RUST_BACKTRACE: 1
@@ -184,3 +186,22 @@ jobs:
         wait-for-processing: true
     - name: Report status
       run: cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
+
+  publish:
+    if: (github.repository == 'katyo/kstring') && startsWith(github.ref, 'refs/tags/')
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Publish crates
+        uses: katyo/publish-crates@v1
+        with:
+          registry-token: ${{ secrets.CRATES_TOKEN }}
+          args: --no-verify
