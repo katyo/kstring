@@ -154,6 +154,13 @@ impl<B: HeapStr> KString<B> {
         self.inner.as_str()
     }
 
+    /// Extracts a mutable string slice containing the entire `KString`.
+    #[inline]
+    #[must_use]
+    pub fn get_mut_str(&mut self) -> Option<&mut str> {
+        self.inner.get_mut_str()
+    }
+
     /// Convert to a mutable string type, cloning the data if necessary.
     #[inline]
     #[must_use]
@@ -371,6 +378,19 @@ impl<B: HeapStr> FromStr for KString<B> {
     }
 }
 
+#[cfg(feature = "zeroize")]
+impl<B: HeapStr> zeroize::TryZeroize for KString<B> {
+    fn try_zeroize(&mut self) -> bool {
+        use zeroize::Zeroize;
+        if let Some(s) = self.inner.get_mut_str() {
+            s.zeroize();
+            true
+        } else {
+            false
+        }
+    }
+}
+
 #[cfg(feature = "serde")]
 impl<B: HeapStr> serde::Serialize for KString<B> {
     #[inline]
@@ -560,6 +580,15 @@ mod inner {
         }
 
         #[inline]
+        pub(super) fn get_mut_str(&mut self) -> Option<&mut str> {
+            match self {
+                Self::Singleton(_) => None,
+                Self::Inline(s) => Some(s.as_mut_str()),
+                Self::Owned(s) => s.get_mut_str(),
+            }
+        }
+
+        #[inline]
         pub(super) fn into_boxed_str(self) -> BoxedStr {
             match self {
                 Self::Singleton(s) => BoxedStr::from(s),
@@ -716,6 +745,22 @@ mod inner {
                 } else {
                     debug_assert!(tag.is_inline());
                     self.inline.payload.as_str()
+                }
+            }
+        }
+
+        #[inline]
+        pub(super) fn get_mut_str(&mut self) -> Option<&mut str> {
+            let tag = self.tag();
+            unsafe {
+                // SAFETY: `tag` ensures access to correct variant
+                if tag.is_singleton() {
+                    None
+                } else if tag.is_owned() {
+                    self.owned.payload.get_mut_str()
+                } else {
+                    debug_assert!(tag.is_inline());
+                    Some(self.inline.payload.as_mut_str())
                 }
             }
         }

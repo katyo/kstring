@@ -25,6 +25,7 @@ pub trait HeapStr: fmt::Debug + Clone + private::Sealed {
     fn from_string(other: String) -> Self;
     fn from_boxed_str(other: BoxedStr) -> Self;
     fn as_str(&self) -> &str;
+    fn get_mut_str(&mut self) -> Option<&mut str>;
 }
 
 impl HeapStr for BoxedStr {
@@ -46,6 +47,11 @@ impl HeapStr for BoxedStr {
     #[inline]
     fn as_str(&self) -> &str {
         self
+    }
+
+    #[inline]
+    fn get_mut_str(&mut self) -> Option<&mut str> {
+        Some(self)
     }
 }
 
@@ -69,6 +75,11 @@ impl HeapStr for ArcStr {
     fn as_str(&self) -> &str {
         self
     }
+
+    #[inline]
+    fn get_mut_str(&mut self) -> Option<&mut str> {
+        Arc::get_mut(self)
+    }
 }
 
 impl HeapStr for RcStr {
@@ -90,6 +101,11 @@ impl HeapStr for RcStr {
     #[inline]
     fn as_str(&self) -> &str {
         self
+    }
+
+    #[inline]
+    fn get_mut_str(&mut self) -> Option<&mut str> {
+        Rc::get_mut(self)
     }
 }
 

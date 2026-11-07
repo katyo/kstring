@@ -44,6 +44,7 @@ Significant changes:
 Features:
 - `max_inline`: Instead of aligning the inline-string for performance (15 bytes + length on 64-bit), use the full width (22 bytes on 64-bit)
 - `arc`: Instead of using `Box<str>`, use `Arc<str>`.  Note: allocations are fast enough that this can actually slow things down for small enough strings.
+- `zeroize` Enables [zeroize](https://crates.io/crates/zeroize) support (Adds `TryZeroize` trait impls).
 - `serde`: Enables [serde](https://serde.rs/) support (Adds `Serialize`/`Deserialize` traits impls).
 - `quote`: Enables [quote](https://docs.rs/quote/1.0.40/quote) support (Adds `ToTokens` trait impls).
 - `diesel`: Enables [diesel](https://diesel.rs/) support (Adds `ToSql`/`FromSql` traits impls).

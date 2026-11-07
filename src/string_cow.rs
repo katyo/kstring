@@ -4,7 +4,8 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     ops::Deref,
-    str::{from_utf8, from_utf8_unchecked, FromStr, Utf8Error},
+    str,
+    str::{FromStr, Utf8Error},
 };
 use std::{
     borrow::{Borrow, Cow},
@@ -93,7 +94,7 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     /// Returns an error if the slice is not valid UTF-8.
     #[inline]
     pub fn from_utf8(other: &'s [u8]) -> Result<Self, Utf8Error> {
-        from_utf8(other).map(Self::from_ref)
+        str::from_utf8(other).map(Self::from_ref)
     }
 
     /// Creates a new `KStringCow` from a UTF-8 byte slice without checking.
@@ -115,7 +116,7 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     #[inline]
     #[must_use]
     pub unsafe fn from_utf8_unchecked(other: &'s [u8]) -> Self {
-        Self::from_ref(from_utf8_unchecked(other))
+        Self::from_ref(str::from_utf8_unchecked(other))
     }
 
     /// Get a reference to the `KString`.
