@@ -8,7 +8,7 @@ mod test_diesel {
     #[diesel(table_name = test_table)]
     struct TestEntity {
         id: i32,
-        name: KString,
+        name: String,
     }
 
     // Diesel schema for testing purposes
@@ -39,7 +39,7 @@ mod test_diesel {
 
         let new_entity = TestEntity {
             id: 1,
-            name: KString::from_static("Test Name"),
+            name: String::from_static("Test Name"),
         };
 
         diesel::insert_into(test_table)

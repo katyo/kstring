@@ -10,24 +10,24 @@ use std::{
     borrow::{Borrow, Cow},
     ffi::OsStr,
     path::Path,
-    string::FromUtf8Error,
+    string::{FromUtf8Error, String as StdString},
 };
 
 use crate::{
+    StringCow, StringRef,
     backend::{BoxedStr, DefaultStr, HeapStr},
     stack::StackString,
-    KStringCow, KStringRef,
 };
 
 /// A UTF-8 encoded, immutable string.
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct KString<B = DefaultStr> {
-    inner: KStringInner<B>,
+pub struct String<B = DefaultStr> {
+    inner: StringInner<B>,
 }
 
-impl<B> KString<B> {
-    pub const EMPTY: Self = KString::from_static("");
+impl<B> String<B> {
+    pub const EMPTY: Self = String::from_static("");
 
     /// Create a new empty `KString`.
     #[inline]
@@ -41,7 +41,7 @@ impl<B> KString<B> {
     #[must_use]
     pub const fn from_static(other: &'static str) -> Self {
         Self {
-            inner: KStringInner::from_static(other),
+            inner: StringInner::from_static(other),
         }
     }
 
@@ -49,31 +49,31 @@ impl<B> KString<B> {
     #[inline]
     #[must_use]
     pub fn try_inline(other: &str) -> Option<Self> {
-        KStringInner::try_inline(other).map(|inner| Self { inner })
+        StringInner::try_inline(other).map(|inner| Self { inner })
     }
 }
 
-impl KString {
+impl String {
     /// Maximum length of string which can be created without alloc in heap
     pub const MAX_INLINE_LEN: usize = inner::CAPACITY;
 }
 
-impl<B: HeapStr> KString<B> {
+impl<B: HeapStr> String<B> {
     /// Create an owned `KString`.
     #[inline]
     #[must_use]
     pub fn from_boxed(other: BoxedStr) -> Self {
         Self {
-            inner: KStringInner::from_boxed(other),
+            inner: StringInner::from_boxed(other),
         }
     }
 
-    /// Create an owned `KString`.
+    /// Create an owned `String`.
     #[inline]
     #[must_use]
-    pub fn from_string(other: String) -> Self {
+    pub fn from_string(other: StdString) -> Self {
         Self {
-            inner: KStringInner::from_string(other),
+            inner: StringInner::from_string(other),
         }
     }
 
@@ -82,27 +82,27 @@ impl<B: HeapStr> KString<B> {
     #[must_use]
     pub fn from_ref(other: &str) -> Self {
         Self {
-            inner: KStringInner::from_ref(other),
+            inner: StringInner::from_ref(other),
         }
     }
 
-    /// Creates a new `KString` from a UTF-8 byte slice.
+    /// Creates a new `String` from a UTF-8 byte slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KString;
+    /// use lstring::String;
     ///
     /// let sparkle_heart = vec![240, 159, 146, 150];
-    /// let kstr = <KString>::from_utf8(sparkle_heart).unwrap();
-    /// assert_eq!(&kstr, "💖");
+    /// let string = <String>::from_utf8(sparkle_heart).unwrap();
+    /// assert_eq!(&string, "💖");
     /// ```
     #[inline]
     pub fn from_utf8(vec: Vec<u8>) -> Result<Self, FromUtf8Error> {
-        String::from_utf8(vec).map(Self::from_string)
+        StdString::from_utf8(vec).map(Self::from_string)
     }
 
-    /// Creates a new `KString` from a UTF-8 byte slice without checking that the bytes are valid UTF-8.
+    /// Creates a new `String` from a UTF-8 byte slice without checking that the bytes are valid UTF-8.
     ///
     /// # Safety
     ///
@@ -111,50 +111,50 @@ impl<B: HeapStr> KString<B> {
     /// # Examples
     ///
     /// ```
-    /// use lstring::KString;
+    /// use lstring::String;
     ///
     /// let sparkle_heart = vec![240, 159, 146, 150];
-    /// let kstr = unsafe { <KString>::from_utf8_unchecked(sparkle_heart) };
-    /// assert_eq!(&kstr, "💖");
+    /// let string = unsafe { <String>::from_utf8_unchecked(sparkle_heart) };
+    /// assert_eq!(&string, "💖");
     /// ```
     #[cfg(feature = "unsafe")]
     #[inline]
     #[must_use]
     pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> Self {
-        Self::from_string(String::from_utf8_unchecked(bytes))
+        Self::from_string(unsafe { StdString::from_utf8_unchecked(bytes) })
     }
 
-    /// Creates a new `KString` from a UTF-16 byte slice.
+    /// Creates a new `String` from a UTF-16 byte slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KString;
+    /// use lstring::String;
     ///
     /// let sparkle_heart = [0xD83D, 0xDC96];
-    /// let kstr = <KString>::from_utf16(&sparkle_heart).unwrap();
-    /// assert_eq!(&kstr, "💖");
+    /// let string = <String>::from_utf16(&sparkle_heart).unwrap();
+    /// assert_eq!(&string, "💖");
     /// ```
     #[inline]
     pub fn from_utf16(other: &[u16]) -> Result<Self, std::string::FromUtf16Error> {
-        String::from_utf16(other).map(Self::from_string)
+        StdString::from_utf16(other).map(Self::from_string)
     }
 
-    /// Get a reference to the `KString`.
+    /// Get a reference to the `String`.
     #[inline]
     #[must_use]
-    pub fn get_ref(&self) -> KStringRef<'_> {
+    pub fn get_ref(&self) -> StringRef<'_> {
         self.inner.get_ref()
     }
 
-    /// Extracts a string slice containing the entire `KString`.
+    /// Extracts a string slice containing the entire `String`.
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
         self.inner.as_str()
     }
 
-    /// Extracts a mutable string slice containing the entire `KString`.
+    /// Extracts a mutable string slice containing the entire `String`.
     #[inline]
     #[must_use]
     pub fn get_mut_str(&mut self) -> Option<&mut str> {
@@ -183,7 +183,7 @@ impl<B: HeapStr> KString<B> {
     }
 }
 
-impl<B: HeapStr> Deref for KString<B> {
+impl<B: HeapStr> Deref for String<B> {
     type Target = str;
 
     #[inline]
@@ -192,185 +192,185 @@ impl<B: HeapStr> Deref for KString<B> {
     }
 }
 
-impl<B: HeapStr> Eq for KString<B> {}
+impl<B: HeapStr> Eq for String<B> {}
 
-impl<B: HeapStr> PartialEq<KString<B>> for KString<B> {
+impl<B: HeapStr> PartialEq<String<B>> for String<B> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl<B: HeapStr> PartialEq<str> for KString<B> {
+impl<B: HeapStr> PartialEq<str> for String<B> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         PartialEq::eq(self.as_str(), other)
     }
 }
 
-impl<B: HeapStr> PartialEq<&str> for KString<B> {
+impl<B: HeapStr> PartialEq<&str> for String<B> {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_str(), *other)
     }
 }
 
-impl<B: HeapStr> PartialEq<String> for KString<B> {
+impl<B: HeapStr> PartialEq<StdString> for String<B> {
     #[inline]
-    fn eq(&self, other: &String) -> bool {
+    fn eq(&self, other: &StdString) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl<B: HeapStr> Ord for KString<B> {
+impl<B: HeapStr> Ord for String<B> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
-impl<B: HeapStr> PartialOrd for KString<B> {
+impl<B: HeapStr> PartialOrd for String<B> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B: HeapStr> Hash for KString<B> {
+impl<B: HeapStr> Hash for String<B> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
 
-impl<B: HeapStr> fmt::Debug for KString<B> {
+impl<B: HeapStr> fmt::Debug for String<B> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
     }
 }
 
-impl<B: HeapStr> fmt::Display for KString<B> {
+impl<B: HeapStr> fmt::Display for String<B> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
     }
 }
 
-impl<B: HeapStr> AsRef<str> for KString<B> {
+impl<B: HeapStr> AsRef<str> for String<B> {
     #[inline]
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<B: HeapStr> AsRef<[u8]> for KString<B> {
+impl<B: HeapStr> AsRef<[u8]> for String<B> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl<B: HeapStr> AsRef<OsStr> for KString<B> {
+impl<B: HeapStr> AsRef<OsStr> for String<B> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (**self).as_ref()
     }
 }
 
-impl<B: HeapStr> AsRef<Path> for KString<B> {
+impl<B: HeapStr> AsRef<Path> for String<B> {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
-impl<B: HeapStr> Borrow<str> for KString<B> {
+impl<B: HeapStr> Borrow<str> for String<B> {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<B: HeapStr> Default for KString<B> {
+impl<B: HeapStr> Default for String<B> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<B: HeapStr> From<StackString<{ KString::MAX_INLINE_LEN }>> for KString<B> {
-    fn from(other: StackString<{ KString::MAX_INLINE_LEN }>) -> Self {
+impl<B: HeapStr> From<StackString<{ String::MAX_INLINE_LEN }>> for String<B> {
+    fn from(other: StackString<{ String::MAX_INLINE_LEN }>) -> Self {
         Self {
-            inner: KStringInner::from_inline(other),
+            inner: StringInner::from_inline(other),
         }
     }
 }
 
-impl<'s, B: HeapStr> From<KStringRef<'s>> for KString<B> {
+impl<'s, B: HeapStr> From<StringRef<'s>> for String<B> {
     #[inline]
-    fn from(other: KStringRef<'s>) -> Self {
+    fn from(other: StringRef<'s>) -> Self {
         other.to_owned()
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KStringRef<'s>> for KString<B> {
+impl<'s, B: HeapStr> From<&'s StringRef<'s>> for String<B> {
     #[inline]
-    fn from(other: &'s KStringRef<'s>) -> Self {
+    fn from(other: &'s StringRef<'s>) -> Self {
         other.to_owned()
     }
 }
 
-impl<'s, B: HeapStr> From<KStringCow<'s, B>> for KString<B> {
+impl<'s, B: HeapStr> From<StringCow<'s, B>> for String<B> {
     #[inline]
-    fn from(other: KStringCow<'s, B>) -> Self {
+    fn from(other: StringCow<'s, B>) -> Self {
         other.into_owned()
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KStringCow<'s, B>> for KString<B> {
+impl<'s, B: HeapStr> From<&'s StringCow<'s, B>> for String<B> {
     #[inline]
-    fn from(other: &'s KStringCow<'s, B>) -> Self {
+    fn from(other: &'s StringCow<'s, B>) -> Self {
         other.clone().into_owned()
     }
 }
 
-impl<B: HeapStr> From<String> for KString<B> {
+impl<B: HeapStr> From<StdString> for String<B> {
     #[inline]
-    fn from(other: String) -> Self {
+    fn from(other: StdString) -> Self {
         Self::from_string(other)
     }
 }
 
-impl<'s, B: HeapStr> From<&'s String> for KString<B> {
+impl<'s, B: HeapStr> From<&'s StdString> for String<B> {
     #[inline]
-    fn from(other: &'s String) -> Self {
+    fn from(other: &'s StdString) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<B: HeapStr> From<BoxedStr> for KString<B> {
+impl<B: HeapStr> From<BoxedStr> for String<B> {
     #[inline]
     fn from(other: BoxedStr) -> Self {
         Self::from_boxed(other)
     }
 }
 
-impl<'s, B: HeapStr> From<&'s BoxedStr> for KString<B> {
+impl<'s, B: HeapStr> From<&'s BoxedStr> for String<B> {
     #[inline]
     fn from(other: &'s BoxedStr) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<B: HeapStr> From<&str> for KString<B> {
+impl<B: HeapStr> From<&str> for String<B> {
     #[inline]
     fn from(other: &str) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<B: HeapStr> FromStr for KString<B> {
+impl<B: HeapStr> FromStr for String<B> {
     type Err = Infallible;
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -379,7 +379,7 @@ impl<B: HeapStr> FromStr for KString<B> {
 }
 
 #[cfg(feature = "zeroize")]
-impl<B: HeapStr> zeroize::TryZeroize for KString<B> {
+impl<B: HeapStr> zeroize::TryZeroize for String<B> {
     fn try_zeroize(&mut self) -> bool {
         use zeroize::Zeroize;
         if let Some(s) = self.inner.get_mut_str() {
@@ -392,7 +392,7 @@ impl<B: HeapStr> zeroize::TryZeroize for KString<B> {
 }
 
 #[cfg(feature = "serde")]
-impl<B: HeapStr> serde::Serialize for KString<B> {
+impl<B: HeapStr> serde::Serialize for String<B> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -403,7 +403,7 @@ impl<B: HeapStr> serde::Serialize for KString<B> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de, B: HeapStr> serde::Deserialize<'de> for KString<B> {
+impl<'de, B: HeapStr> serde::Deserialize<'de> for String<B> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -417,7 +417,7 @@ struct StringVisitor<B>(core::marker::PhantomData<B>);
 
 #[cfg(feature = "serde")]
 impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
-    type Value = KString<B>;
+    type Value = String<B>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("a string")
@@ -430,7 +430,7 @@ impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
         Ok(Self::Value::from_ref(v))
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    fn visit_string<E>(self, v: StdString) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
@@ -454,7 +454,7 @@ impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
     where
         E: serde::de::Error,
     {
-        match String::from_utf8(v) {
+        match StdString::from_utf8(v) {
             Ok(s) => Ok(Self::Value::from_string(s)),
             Err(e) => Err(serde::de::Error::invalid_value(
                 serde::de::Unexpected::Bytes(&e.into_bytes()),
@@ -465,7 +465,7 @@ impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
 }
 
 #[cfg(feature = "quote")]
-impl<B: HeapStr> quote::ToTokens for KString<B> {
+impl<B: HeapStr> quote::ToTokens for String<B> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         self.as_str().to_tokens(tokens);
     }
@@ -476,10 +476,10 @@ impl<B: HeapStr> quote::ToTokens for KString<B> {
 #[diesel(foreign_derive)]
 #[diesel(sql_type = diesel::sql_types::Text)]
 #[allow(dead_code)]
-struct KStringProxy<B>(KString<B>);
+struct StringProxy<B>(String<B>);
 
 #[cfg(feature = "diesel")]
-impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for KString<B>
+impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for String<B>
 where
     B: HeapStr,
     DB: diesel::backend::Backend,
@@ -499,7 +499,7 @@ where
 }
 
 #[cfg(feature = "diesel")]
-impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for KString<B>
+impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for String<B>
 where
     B: HeapStr,
     DB: diesel::backend::Backend,
@@ -513,20 +513,20 @@ where
     }
 }
 
-use inner::KStringInner;
+use inner::StringInner;
 
 #[cfg(not(feature = "unsafe"))]
 mod inner {
     use super::*;
     use core::mem::size_of;
 
-    pub(super) enum KStringInner<B> {
+    pub(super) enum StringInner<B> {
         Singleton(&'static str),
         Inline(StackString<CAPACITY>),
         Owned(B),
     }
 
-    impl<B> KStringInner<B> {
+    impl<B> StringInner<B> {
         /// Create a reference to a `'static` data.
         #[inline]
         pub const fn from_static(other: &'static str) -> Self {
@@ -544,7 +544,7 @@ mod inner {
         }
     }
 
-    impl<B: HeapStr> KStringInner<B> {
+    impl<B: HeapStr> StringInner<B> {
         #[inline]
         pub(super) fn from_boxed(other: BoxedStr) -> Self {
             #[allow(clippy::useless_conversion)]
@@ -552,7 +552,7 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn from_string(other: String) -> Self {
+        pub(super) fn from_string(other: StdString) -> Self {
             Self::try_inline(&other).unwrap_or_else(|| Self::from_boxed(other.into_boxed_str()))
         }
 
@@ -562,11 +562,11 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn get_ref(&self) -> KStringRef<'_> {
+        pub(super) fn get_ref(&self) -> StringRef<'_> {
             match self {
-                Self::Singleton(s) => KStringRef::from_static(s),
-                Self::Inline(s) => KStringRef::from_ref(s.as_str()),
-                Self::Owned(s) => KStringRef::from_ref(s.as_str()),
+                Self::Singleton(s) => StringRef::from_static(s),
+                Self::Inline(s) => StringRef::from_ref(s.as_str()),
+                Self::Owned(s) => StringRef::from_ref(s.as_str()),
             }
         }
 
@@ -616,7 +616,7 @@ mod inner {
     //
     // My only guess is that the `clone()` calls we delegate to are just that much bigger than
     // `as_str()` that, when combined with a jump table, is blowing the icache, slowing things down.
-    impl<B: Clone> Clone for KStringInner<B> {
+    impl<B: Clone> Clone for StringInner<B> {
         fn clone(&self) -> Self {
             match self {
                 Self::Singleton(s) => Self::Singleton(s),
@@ -650,17 +650,17 @@ mod inner {
 #[cfg(feature = "unsafe")]
 mod inner {
     use super::*;
-    use core::mem::{transmute_copy, ManuallyDrop, MaybeUninit};
+    use core::mem::{ManuallyDrop, MaybeUninit, transmute_copy};
 
     #[repr(C)]
-    pub(super) union KStringInner<B> {
+    pub(super) union StringInner<B> {
         tag: TagVariant,
         singleton: SingletonVariant,
         owned: ManuallyDrop<OwnedVariant<B>>,
         inline: InlineVariant,
     }
 
-    impl<B> KStringInner<B> {
+    impl<B> StringInner<B> {
         /// Create a reference to a `'static` data.
         #[inline]
         pub const fn from_static(other: &'static str) -> Self {
@@ -690,7 +690,7 @@ mod inner {
         }
     }
 
-    impl<B: HeapStr> KStringInner<B> {
+    impl<B: HeapStr> StringInner<B> {
         #[inline]
         pub(super) fn from_boxed(other: BoxedStr) -> Self {
             #[allow(clippy::useless_conversion)]
@@ -701,14 +701,14 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn from_string(other: String) -> Self {
-            KStringInner::try_inline(&other)
+        pub(super) fn from_string(other: StdString) -> Self {
+            StringInner::try_inline(&other)
                 .unwrap_or_else(|| Self::from_boxed(other.into_boxed_str()))
         }
 
         #[inline]
         pub(super) fn from_ref(other: &str) -> Self {
-            KStringInner::try_inline(other).unwrap_or_else(|| {
+            StringInner::try_inline(other).unwrap_or_else(|| {
                 #[allow(clippy::useless_conversion)]
                 let payload = B::from_str(other);
                 Self {
@@ -718,17 +718,17 @@ mod inner {
         }
 
         #[inline]
-        pub(super) fn get_ref(&self) -> KStringRef<'_> {
+        pub(super) fn get_ref(&self) -> StringRef<'_> {
             let tag = self.tag();
             unsafe {
                 // SAFETY: `tag` ensures access to correct variant
                 if tag.is_singleton() {
-                    KStringRef::from_static(self.singleton.payload)
+                    StringRef::from_static(self.singleton.payload)
                 } else if tag.is_owned() {
-                    KStringRef::from_ref(self.owned.payload.as_str())
+                    StringRef::from_ref(self.owned.payload.as_str())
                 } else {
                     debug_assert!(tag.is_inline());
-                    KStringRef::from_ref(self.inline.payload.as_str())
+                    StringRef::from_ref(self.inline.payload.as_str())
                 }
             }
         }
@@ -807,7 +807,7 @@ mod inner {
     //
     // My only guess is that the `clone()` calls we delegate to are just that much bigger than
     // `as_str()` that, when combined with a jump table, is blowing the icache, slowing things down.
-    impl<B: Clone> Clone for KStringInner<B> {
+    impl<B: Clone> Clone for StringInner<B> {
         fn clone(&self) -> Self {
             let tag = self.tag();
             if tag.is_owned() {
@@ -827,7 +827,7 @@ mod inner {
         }
     }
 
-    impl<B> Drop for KStringInner<B> {
+    impl<B> Drop for StringInner<B> {
         fn drop(&mut self) {
             let tag = self.tag();
             if tag.is_owned() {
@@ -851,7 +851,7 @@ mod inner {
 
     #[allow(unused)]
     const TARGET_SIZE: usize = size_of::<Target>();
-    type Target = String;
+    type Target = StdString;
 
     #[allow(unused)]
     const MAX_CAPACITY: usize = TARGET_SIZE - LEN_SIZE - TAG_SIZE;
@@ -962,20 +962,20 @@ mod inner {
         }
     }
 
-    /// Represents the internal tag used to distinguish between different variants of `KStringInner`.
+    /// Represents the internal tag used to distinguish between different variants of `StringInner`.
     ///
-    /// The `Tag` type is crucial for determining whether a `KStringInner` instance holds a singleton,
+    /// The `Tag` type is crucial for determining whether a `StringInner` instance holds a singleton,
     /// owned, or inline string. This helps in safely accessing the correct variant without undefined behavior.
     #[derive(Copy, Clone, PartialEq, Eq)]
     #[repr(transparent)]
     struct Tag(u8);
 
     impl Tag {
-        /// Represents a `KStringInner` variant that holds a reference to `'static` string data.
+        /// Represents a `StringInner` variant that holds a reference to `'static` string data.
         const SINGLETON: Tag = Tag(0);
-        /// Represents a `KStringInner` variant that owns the string data on the heap.
+        /// Represents a `StringInner` variant that owns the string data on the heap.
         const OWNED: Tag = Tag(u8::MAX);
-        /// Represents a `KStringInner` variant that holds the string data inline within the struct.
+        /// Represents a `StringInner` variant that holds the string data inline within the struct.
         const INLINE: Tag = Tag(1);
 
         #[inline]
@@ -1022,6 +1022,6 @@ mod test {
 
     #[test]
     fn test_size() {
-        println!("KString: {}", size_of::<KString>());
+        println!("KString: {}", size_of::<String>());
     }
 }

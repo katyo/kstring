@@ -107,7 +107,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     pub unsafe fn new_unchecked(s: &str) -> Self {
         let len = s.len() as u8;
         debug_assert!(Self::CAPACITY <= Len::MAX.into());
-        let buffer = StrBuffer::new_unchecked(s);
+        let buffer = unsafe { StrBuffer::new_unchecked(s) };
         Self { len, buffer }
     }
 
@@ -352,9 +352,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
     pub unsafe fn push_unchecked(&mut self, s: &str) {
         let new_len = self.len as usize + s.len();
         debug_assert!(new_len <= Self::CAPACITY);
-        self.buffer
-            .0
-            .get_unchecked_mut(self.len as usize..new_len)
+        unsafe { self.buffer.0.get_unchecked_mut(self.len as usize..new_len) }
             .copy_from_slice(s.as_bytes());
         self.len = new_len as u8;
     }
@@ -454,9 +452,7 @@ impl<const CAPACITY: usize> StackString<CAPACITY> {
         debug_assert!(new_len <= Self::CAPACITY);
         let mut buf = [0; 4];
         let s = c.encode_utf8(&mut buf);
-        self.buffer
-            .0
-            .get_unchecked_mut(self.len as usize..new_len)
+        unsafe { self.buffer.0.get_unchecked_mut(self.len as usize..new_len) }
             .copy_from_slice(s.as_bytes());
         self.len = new_len as u8;
     }
@@ -677,23 +673,24 @@ impl<const CAPACITY: usize> StrBuffer<CAPACITY> {
         let len = s.len();
         debug_assert!(len <= CAPACITY);
         let mut buffer = Self::default();
-        buffer
-            .0
-            .get_unchecked_mut(..len)
-            .copy_from_slice(s.as_bytes());
+        unsafe { buffer.0.get_unchecked_mut(..len) }.copy_from_slice(s.as_bytes());
         buffer
     }
 
     #[inline]
     pub(crate) unsafe fn as_str_unchecked(&self, len: usize) -> &str {
-        let slice = self.0.get_unchecked(..len);
-        str::from_utf8_unchecked(slice)
+        unsafe {
+            let slice = self.0.get_unchecked(..len);
+            str::from_utf8_unchecked(slice)
+        }
     }
 
     #[inline]
     pub(crate) unsafe fn as_mut_str_unchecked(&mut self, len: usize) -> &mut str {
-        let slice = self.0.get_unchecked_mut(..len);
-        str::from_utf8_unchecked_mut(slice)
+        unsafe {
+            let slice = self.0.get_unchecked_mut(..len);
+            str::from_utf8_unchecked_mut(slice)
+        }
     }
 }
 

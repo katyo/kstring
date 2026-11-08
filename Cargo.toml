@@ -3,7 +3,7 @@ resolver = "2"
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
-edition = "2021"
+edition = "2024"
 rust-version = "1.85.1" # MSRV
 include = [
     "build.rs",
@@ -18,7 +18,7 @@ include = [
 
 [package]
 name = "lstring"
-version = "2.1.0"
+version = "3.0.0"
 description = "Key String: optimized for map keys"
 authors = ["Ed Page <eopage@gmail.com>", "K. <kayo@illumium.org>"]
 repository = "https://github.com/katyo/kstring"

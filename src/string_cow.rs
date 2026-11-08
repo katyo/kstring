@@ -11,28 +11,29 @@ use std::{
     borrow::{Borrow, Cow},
     ffi::OsStr,
     path::Path,
+    string::String as StdString,
 };
 
 use crate::{
+    String, StringRef, StringRefInner,
     backend::{BoxedStr, DefaultStr, HeapStr},
-    KString, KStringRef, KStringRefInner,
 };
 
 /// A reference to a UTF-8 encoded, immutable string.
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct KStringCow<'s, B = DefaultStr> {
-    pub(crate) inner: KStringCowInner<'s, B>,
+pub struct StringCow<'s, B = DefaultStr> {
+    pub(crate) inner: StringCowInner<'s, B>,
 }
 
 #[derive(Clone)]
-pub(crate) enum KStringCowInner<'s, B> {
+pub(crate) enum StringCowInner<'s, B> {
     Borrowed(&'s str),
-    Owned(KString<B>),
+    Owned(String<B>),
 }
 
-impl<B> KStringCow<'_, B> {
-    /// Create a new empty `KStringCow`.
+impl<B> StringCow<'_, B> {
+    /// Create a new empty `StringCow`.
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
@@ -44,27 +45,27 @@ impl<B> KStringCow<'_, B> {
     #[must_use]
     pub const fn from_static(other: &'static str) -> Self {
         Self {
-            inner: KStringCowInner::Owned(KString::from_static(other)),
+            inner: StringCowInner::Owned(String::from_static(other)),
         }
     }
 }
 
-impl<'s, B: HeapStr> KStringCow<'s, B> {
-    /// Create an owned `KStringCow`.
+impl<'s, B: HeapStr> StringCow<'s, B> {
+    /// Create an owned `StringCow`.
     #[inline]
     #[must_use]
     pub fn from_boxed(other: BoxedStr) -> Self {
         Self {
-            inner: KStringCowInner::Owned(KString::from_boxed(other)),
+            inner: StringCowInner::Owned(String::from_boxed(other)),
         }
     }
 
-    /// Create an owned `KStringCow`.
+    /// Create an owned `StringCow`.
     #[inline]
     #[must_use]
-    pub fn from_string(other: String) -> Self {
+    pub fn from_string(other: StdString) -> Self {
         Self {
-            inner: KStringCowInner::Owned(KString::from_string(other)),
+            inner: StringCowInner::Owned(String::from_string(other)),
         }
     }
 
@@ -73,20 +74,20 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     #[must_use]
     pub fn from_ref(other: &'s str) -> Self {
         Self {
-            inner: KStringCowInner::Borrowed(other),
+            inner: StringCowInner::Borrowed(other),
         }
     }
 
-    /// Creates a new `KStringCow` from a UTF-8 byte slice.
+    /// Creates a new `StringCow` from a UTF-8 byte slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringCow;
+    /// use lstring::StringCow;
     ///
     /// let bytes = [240, 159, 146, 150];
-    /// let kstr_cow = <KStringCow>::from_utf8(&bytes).unwrap();
-    /// assert_eq!(&kstr_cow, "💖");
+    /// let str_cow = <StringCow>::from_utf8(&bytes).unwrap();
+    /// assert_eq!(&str_cow, "💖");
     /// ```
     ///
     /// # Errors
@@ -97,7 +98,7 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
         str::from_utf8(other).map(Self::from_ref)
     }
 
-    /// Creates a new `KStringCow` from a UTF-8 byte slice without checking.
+    /// Creates a new `StringCow` from a UTF-8 byte slice without checking.
     ///
     /// # Safety
     ///
@@ -106,34 +107,34 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringCow;
+    /// use lstring::StringCow;
     ///
     /// let bytes = [240, 159, 146, 150];
-    /// let kstr_cow = unsafe { <KStringCow>::from_utf8_unchecked(&bytes) };
-    /// assert_eq!(&kstr_cow, "💖");
+    /// let str_cow = unsafe { <StringCow>::from_utf8_unchecked(&bytes) };
+    /// assert_eq!(&str_cow, "💖");
     /// ```
     #[cfg(feature = "unsafe")]
     #[inline]
     #[must_use]
     pub unsafe fn from_utf8_unchecked(other: &'s [u8]) -> Self {
-        Self::from_ref(str::from_utf8_unchecked(other))
+        Self::from_ref(unsafe { str::from_utf8_unchecked(other) })
     }
 
-    /// Get a reference to the `KString`.
+    /// Get a reference to the `String`.
     #[inline]
     #[must_use]
-    pub fn get_ref(&self) -> KStringRef<'_> {
+    pub fn get_ref(&self) -> StringRef<'_> {
         self.inner.get_ref()
     }
 
     /// Clone the data into an owned-type.
     #[inline]
     #[must_use]
-    pub fn into_owned(self) -> KString<B> {
+    pub fn into_owned(self) -> String<B> {
         self.inner.into_owned()
     }
 
-    /// Extracts a string slice containing the entire `KStringCow`.
+    /// Extracts a string slice containing the entire `StringCow`.
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
@@ -162,19 +163,19 @@ impl<'s, B: HeapStr> KStringCow<'s, B> {
     }
 }
 
-impl<'s, B: HeapStr> KStringCowInner<'s, B> {
+impl<'s, B: HeapStr> StringCowInner<'s, B> {
     #[inline]
-    fn get_ref(&self) -> KStringRef<'_> {
+    fn get_ref(&self) -> StringRef<'_> {
         match self {
-            Self::Borrowed(s) => KStringRef::from_ref(s),
+            Self::Borrowed(s) => StringRef::from_ref(s),
             Self::Owned(s) => s.get_ref(),
         }
     }
 
     #[inline]
-    fn into_owned(self) -> KString<B> {
+    fn into_owned(self) -> String<B> {
         match self {
-            Self::Borrowed(s) => KString::from_ref(s),
+            Self::Borrowed(s) => String::from_ref(s),
             Self::Owned(s) => s,
         }
     }
@@ -205,7 +206,7 @@ impl<'s, B: HeapStr> KStringCowInner<'s, B> {
     }
 }
 
-impl<B: HeapStr> Deref for KStringCow<'_, B> {
+impl<B: HeapStr> Deref for StringCow<'_, B> {
     type Target = str;
 
     #[inline]
@@ -214,164 +215,164 @@ impl<B: HeapStr> Deref for KStringCow<'_, B> {
     }
 }
 
-impl<B: HeapStr> Eq for KStringCow<'_, B> {}
+impl<B: HeapStr> Eq for StringCow<'_, B> {}
 
-impl<'s, B: HeapStr> PartialEq<KStringCow<'s, B>> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> PartialEq<StringCow<'s, B>> for StringCow<'s, B> {
     #[inline]
-    fn eq(&self, other: &KStringCow<'s, B>) -> bool {
+    fn eq(&self, other: &StringCow<'s, B>) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl<B: HeapStr> PartialEq<str> for KStringCow<'_, B> {
+impl<B: HeapStr> PartialEq<str> for StringCow<'_, B> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         PartialEq::eq(self.as_str(), other)
     }
 }
 
-impl<'s, B: HeapStr> PartialEq<&'s str> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> PartialEq<&'s str> for StringCow<'s, B> {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_str(), *other)
     }
 }
 
-impl<B: HeapStr> PartialEq<String> for KStringCow<'_, B> {
+impl<B: HeapStr> PartialEq<String> for StringCow<'_, B> {
     #[inline]
     fn eq(&self, other: &String) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl<B: HeapStr> Ord for KStringCow<'_, B> {
+impl<B: HeapStr> Ord for StringCow<'_, B> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
-impl<B: HeapStr> PartialOrd for KStringCow<'_, B> {
+impl<B: HeapStr> PartialOrd for StringCow<'_, B> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B: HeapStr> Hash for KStringCow<'_, B> {
+impl<B: HeapStr> Hash for StringCow<'_, B> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
 
-impl<B: HeapStr> fmt::Debug for KStringCow<'_, B> {
+impl<B: HeapStr> fmt::Debug for StringCow<'_, B> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
     }
 }
 
-impl<B: HeapStr> fmt::Display for KStringCow<'_, B> {
+impl<B: HeapStr> fmt::Display for StringCow<'_, B> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
     }
 }
 
-impl<B: HeapStr> AsRef<str> for KStringCow<'_, B> {
+impl<B: HeapStr> AsRef<str> for StringCow<'_, B> {
     #[inline]
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<B: HeapStr> AsRef<[u8]> for KStringCow<'_, B> {
+impl<B: HeapStr> AsRef<[u8]> for StringCow<'_, B> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl<B: HeapStr> AsRef<OsStr> for KStringCow<'_, B> {
+impl<B: HeapStr> AsRef<OsStr> for StringCow<'_, B> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (**self).as_ref()
     }
 }
 
-impl<B: HeapStr> AsRef<Path> for KStringCow<'_, B> {
+impl<B: HeapStr> AsRef<Path> for StringCow<'_, B> {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
-impl<B: HeapStr> Borrow<str> for KStringCow<'_, B> {
+impl<B: HeapStr> Borrow<str> for StringCow<'_, B> {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<B> Default for KStringCow<'_, B> {
+impl<B> Default for StringCow<'_, B> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<B: HeapStr> From<KString<B>> for KStringCow<'_, B> {
+impl<B: HeapStr> From<String<B>> for StringCow<'_, B> {
     #[inline]
-    fn from(other: KString<B>) -> Self {
-        let inner = KStringCowInner::Owned(other);
+    fn from(other: String<B>) -> Self {
+        let inner = StringCowInner::Owned(other);
         Self { inner }
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KString<B>> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<&'s String<B>> for StringCow<'s, B> {
     #[inline]
-    fn from(other: &'s KString<B>) -> Self {
+    fn from(other: &'s String<B>) -> Self {
         let other = other.get_ref();
         other.into()
     }
 }
 
-impl<'s, B: HeapStr> From<KStringRef<'s>> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<StringRef<'s>> for StringCow<'s, B> {
     #[inline]
-    fn from(other: KStringRef<'s>) -> Self {
+    fn from(other: StringRef<'s>) -> Self {
         match other.inner {
-            KStringRefInner::Borrowed(s) => Self::from_ref(s),
-            KStringRefInner::Singleton(s) => Self::from_static(s),
+            StringRefInner::Borrowed(s) => Self::from_ref(s),
+            StringRefInner::Singleton(s) => Self::from_static(s),
         }
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KStringRef<'s>> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<&'s StringRef<'s>> for StringCow<'s, B> {
     #[inline]
-    fn from(other: &'s KStringRef<'s>) -> Self {
+    fn from(other: &'s StringRef<'s>) -> Self {
         match other.inner {
-            KStringRefInner::Borrowed(s) => Self::from_ref(s),
-            KStringRefInner::Singleton(s) => Self::from_static(s),
+            StringRefInner::Borrowed(s) => Self::from_ref(s),
+            StringRefInner::Singleton(s) => Self::from_static(s),
         }
     }
 }
 
-impl<B: HeapStr> From<String> for KStringCow<'_, B> {
+impl<B: HeapStr> From<StdString> for StringCow<'_, B> {
     #[inline]
-    fn from(other: String) -> Self {
+    fn from(other: StdString) -> Self {
         Self::from_string(other)
     }
 }
 
-impl<'s, B: HeapStr> From<&'s String> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<&'s StdString> for StringCow<'s, B> {
     #[inline]
-    fn from(other: &'s String) -> Self {
+    fn from(other: &'s StdString) -> Self {
         Self::from_ref(other.as_str())
     }
 }
 
-impl<B: HeapStr> From<BoxedStr> for KStringCow<'_, B> {
+impl<B: HeapStr> From<BoxedStr> for StringCow<'_, B> {
     #[inline]
     fn from(other: BoxedStr) -> Self {
         // Since the memory is already allocated, don't bother moving it into a FixedString
@@ -379,21 +380,21 @@ impl<B: HeapStr> From<BoxedStr> for KStringCow<'_, B> {
     }
 }
 
-impl<'s, B: HeapStr> From<&'s BoxedStr> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<&'s BoxedStr> for StringCow<'s, B> {
     #[inline]
     fn from(other: &'s BoxedStr) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<'s, B: HeapStr> From<&'s str> for KStringCow<'s, B> {
+impl<'s, B: HeapStr> From<&'s str> for StringCow<'s, B> {
     #[inline]
     fn from(other: &'s str) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<B: HeapStr> FromStr for KStringCow<'_, B> {
+impl<B: HeapStr> FromStr for StringCow<'_, B> {
     type Err = Infallible;
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -402,7 +403,7 @@ impl<B: HeapStr> FromStr for KStringCow<'_, B> {
 }
 
 #[cfg(feature = "serde")]
-impl<B: HeapStr> serde::Serialize for KStringCow<'_, B> {
+impl<B: HeapStr> serde::Serialize for StringCow<'_, B> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -413,17 +414,17 @@ impl<B: HeapStr> serde::Serialize for KStringCow<'_, B> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de, B: HeapStr> serde::Deserialize<'de> for KStringCow<'_, B> {
+impl<'de, B: HeapStr> serde::Deserialize<'de> for StringCow<'_, B> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        KString::deserialize(deserializer).map(|s| s.into())
+        String::deserialize(deserializer).map(|s| s.into())
     }
 }
 
 #[cfg(feature = "quote")]
-impl<B: HeapStr> quote::ToTokens for KStringCow<'_, B> {
+impl<B: HeapStr> quote::ToTokens for StringCow<'_, B> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         self.as_str().to_tokens(tokens);
     }
@@ -434,22 +435,22 @@ impl<B: HeapStr> quote::ToTokens for KStringCow<'_, B> {
 #[diesel(foreign_derive)]
 #[diesel(sql_type = diesel::sql_types::Text)]
 #[allow(dead_code)]
-struct KStringCowProxy<'s, B>(KStringCow<'s, B>);
+struct StringCowProxy<'s, B>(StringCow<'s, B>);
 
 #[cfg(feature = "diesel")]
-impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for KStringCow<'_, B>
+impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for StringCow<'_, B>
 where
     B: HeapStr,
     DB: diesel::backend::Backend,
     *const str: diesel::deserialize::FromSql<ST, DB>,
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        KString::from_sql(bytes).map(From::from)
+        String::from_sql(bytes).map(From::from)
     }
 }
 
 #[cfg(feature = "diesel")]
-impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for KStringCow<'_, B>
+impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for StringCow<'_, B>
 where
     B: HeapStr,
     DB: diesel::backend::Backend,
@@ -470,6 +471,6 @@ mod test {
 
     #[test]
     fn test_size() {
-        println!("KStringCow: {}", size_of::<KStringCow<'static>>());
+        println!("StringCow: {}", size_of::<StringCow<'static>>());
     }
 }

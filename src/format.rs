@@ -1,25 +1,25 @@
-use crate::{backend::HeapStr, KString, KStringCow, KStringRef, StackString};
+use crate::{StackString, String, StringCow, StringRef, backend::HeapStr};
 use core::fmt;
 use std::{borrow::Cow, string::String as StdString};
 
-/// A macro for formatting arguments into a `KString`.
+/// A macro for formatting arguments into a `String`.
 ///
-/// This macro is similar to Rust's standard `format!` macro but outputs a `KString`
+/// This macro is similar to Rust's standard `format!` macro but outputs a `String`
 /// instead of a `String`. It uses the `fmt::Write` trait internally to append formatted
 /// text efficiently.
 ///
 /// # Examples
 ///
 /// ```
-/// # use lstring::{kformat, KString};
-/// let s: KString = kformat!("Hello, {}!", "world");
+/// # use lstring::{format, String};
+/// let s: String = format!("Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! kformat {
+macro_rules! format {
     ($($arg:tt)*) => {{
         use core::fmt::Write;
-        let mut ks = $crate::KStringWriter::default();
+        let mut ks = $crate::StringWriter::default();
         write!(ks, $($arg)*).unwrap();
         ks.into()
     }};
@@ -27,7 +27,7 @@ macro_rules! kformat {
 
 /// A writer that can append formatted text to either an inline `StackString` or a heap-allocated `String`.
 ///
-/// The `KStringWriter` starts writing into a stack-allocated `StackString` for efficiency. If the capacity
+/// The `StringWriter` starts writing into a stack-allocated `StackString` for efficiency. If the capacity
 /// of the inline storage is exceeded, it switches to using a heap-allocated `String`. This allows for
 /// efficient formatting without unnecessary allocations in cases where the formatted text fits within the
 /// inline buffer.
@@ -35,55 +35,55 @@ macro_rules! kformat {
 /// # Examples
 ///
 /// ```
-/// use lstring::{KString, KStringWriter};
+/// use lstring::{String, StringWriter};
 /// use core::fmt::Write;
 ///
-/// let mut writer = KStringWriter::default();
+/// let mut writer = StringWriter::default();
 /// write!(writer, "Hello, {}!", "world").unwrap();
-/// let s: KString = writer.into();
+/// let s: String = writer.into();
 /// assert_eq!(s, "Hello, world!");
 /// ```
 #[derive(Clone)]
-pub enum KStringWriter {
-    Inline(StackString<{ KString::MAX_INLINE_LEN }>),
-    Owned(String),
+pub enum StringWriter {
+    Inline(StackString<{ String::MAX_INLINE_LEN }>),
+    Owned(StdString),
 }
 
-impl KStringWriter {
+impl StringWriter {
     pub fn new() -> Self {
         Self::Inline(StackString::default())
     }
 
-    /// Reserves additional capacity for the `KStringWriter`.
+    /// Reserves additional capacity for the `StringWriter`.
     ///
     /// If the writer is currently using an inline `StackString` and the requested capacity exceeds
     /// its maximum inline length, it will switch to a heap-allocated `String`. This method ensures
     /// that subsequent writes do not require reallocations if the specified capacity is available.
     pub fn reserve(&mut self, additional: usize) {
         match self {
-            KStringWriter::Inline(inline) => {
+            StringWriter::Inline(inline) => {
                 let capacity = inline.len() + additional;
-                if capacity > KString::MAX_INLINE_LEN {
+                if capacity > String::MAX_INLINE_LEN {
                     // Turn to owned
-                    let mut owned = String::with_capacity(capacity);
+                    let mut owned = StdString::with_capacity(capacity);
                     owned.push_str(inline);
-                    *self = KStringWriter::Owned(owned);
+                    *self = StringWriter::Owned(owned);
                 }
             }
-            KStringWriter::Owned(owned) => {
+            StringWriter::Owned(owned) => {
                 owned.reserve(additional);
             }
         }
     }
 
-    /// Appends a single character to the `KStringWriter`.
+    /// Appends a single character to the `StringWriter`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringWriter;
+    /// use lstring::StringWriter;
     ///
-    /// let mut writer = KStringWriter::default();
+    /// let mut writer = StringWriter::default();
     /// writer.push('a');
     /// assert_eq!(writer.as_ref(), "a");
     /// ```
@@ -92,7 +92,7 @@ impl KStringWriter {
             if inline.try_push_char(ch) {
                 return;
             }
-            *self = Self::Owned(String::from(&*inline));
+            *self = Self::Owned(StdString::from(&*inline));
         }
         if let Self::Owned(owned) = self {
             owned.push(ch);
@@ -101,14 +101,14 @@ impl KStringWriter {
         }
     }
 
-    /// Appends a string slice to the `KStringWriter`.
+    /// Appends a string slice to the `StringWriter`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringWriter;
+    /// use lstring::StringWriter;
     ///
-    /// let mut writer = KStringWriter::default();
+    /// let mut writer = StringWriter::default();
     /// writer.push_str("abc");
     /// assert_eq!(writer.as_ref(), "abc");
     /// ```
@@ -117,7 +117,7 @@ impl KStringWriter {
             if inline.try_push(s) {
                 return;
             }
-            *self = Self::Owned(String::from(&*inline));
+            *self = Self::Owned(StdString::from(&*inline));
         }
         if let Self::Owned(owned) = self {
             owned.push_str(s);
@@ -127,7 +127,7 @@ impl KStringWriter {
     }
 }
 
-impl AsRef<str> for KStringWriter {
+impl AsRef<str> for StringWriter {
     fn as_ref(&self) -> &str {
         match self {
             Self::Inline(inline) => inline.as_ref(),
@@ -136,29 +136,29 @@ impl AsRef<str> for KStringWriter {
     }
 }
 
-impl Default for KStringWriter {
+impl Default for StringWriter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<B: HeapStr> From<KStringWriter> for KString<B> {
-    fn from(writer: KStringWriter) -> Self {
+impl<B: HeapStr> From<StringWriter> for String<B> {
+    fn from(writer: StringWriter) -> Self {
         match writer {
-            KStringWriter::Inline(inline) => inline.into(),
-            KStringWriter::Owned(owned) => owned.into(),
+            StringWriter::Inline(inline) => inline.into(),
+            StringWriter::Owned(owned) => owned.into(),
         }
     }
 }
 
-impl fmt::Write for KStringWriter {
+impl fmt::Write for StringWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
         Ok(())
     }
 }
 
-impl Extend<char> for KStringWriter {
+impl Extend<char> for StringWriter {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
@@ -169,13 +169,13 @@ impl Extend<char> for KStringWriter {
     }
 }
 
-impl<'a> Extend<&'a char> for KStringWriter {
+impl<'a> Extend<&'a char> for StringWriter {
     fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 }
 
-impl<'a> Extend<&'a str> for KStringWriter {
+impl<'a> Extend<&'a str> for StringWriter {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(s);
@@ -183,7 +183,7 @@ impl<'a> Extend<&'a str> for KStringWriter {
     }
 }
 
-impl Extend<Box<str>> for KStringWriter {
+impl Extend<Box<str>> for StringWriter {
     fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
@@ -191,15 +191,15 @@ impl Extend<Box<str>> for KStringWriter {
     }
 }
 
-impl Extend<StdString> for KStringWriter {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+impl Extend<StdString> for StringWriter {
+    fn extend<I: IntoIterator<Item = StdString>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
         }
     }
 }
 
-impl<'a> Extend<Cow<'a, str>> for KStringWriter {
+impl<'a> Extend<Cow<'a, str>> for StringWriter {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
@@ -207,92 +207,92 @@ impl<'a> Extend<Cow<'a, str>> for KStringWriter {
     }
 }
 
-impl<'a, B: HeapStr> Extend<&'a KString<B>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = &'a KString<B>>>(&mut self, iter: I) {
+impl<'a, B: HeapStr> Extend<&'a String<B>> for StringWriter {
+    fn extend<I: IntoIterator<Item = &'a String<B>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(s);
         }
     }
 }
 
-impl<B: HeapStr> Extend<KString<B>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = KString<B>>>(&mut self, iter: I) {
+impl<B: HeapStr> Extend<String<B>> for StringWriter {
+    fn extend<I: IntoIterator<Item = String<B>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
         }
     }
 }
 
-impl<'a, 's, B: HeapStr> Extend<&'a KStringCow<'s, B>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = &'a KStringCow<'s, B>>>(&mut self, iter: I) {
+impl<'a, 's, B: HeapStr> Extend<&'a StringCow<'s, B>> for StringWriter {
+    fn extend<I: IntoIterator<Item = &'a StringCow<'s, B>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(s);
         }
     }
 }
 
-impl<'s, B: HeapStr> Extend<KStringCow<'s, B>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = KStringCow<'s, B>>>(&mut self, iter: I) {
+impl<'s, B: HeapStr> Extend<StringCow<'s, B>> for StringWriter {
+    fn extend<I: IntoIterator<Item = StringCow<'s, B>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
         }
     }
 }
 
-impl<'a, 's> Extend<&'a KStringRef<'s>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = &'a KStringRef<'s>>>(&mut self, iter: I) {
+impl<'a, 's> Extend<&'a StringRef<'s>> for StringWriter {
+    fn extend<I: IntoIterator<Item = &'a StringRef<'s>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(s);
         }
     }
 }
 
-impl<'s> Extend<KStringRef<'s>> for KStringWriter {
-    fn extend<I: IntoIterator<Item = KStringRef<'s>>>(&mut self, iter: I) {
+impl<'s> Extend<StringRef<'s>> for StringWriter {
+    fn extend<I: IntoIterator<Item = StringRef<'s>>>(&mut self, iter: I) {
         for s in iter.into_iter() {
             self.push_str(&s);
         }
     }
 }
 
-impl<B: HeapStr> FromIterator<char> for KString<B> {
+impl<B: HeapStr> FromIterator<char> for String<B> {
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
-        let mut writer = KStringWriter::new();
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'a, B: HeapStr> FromIterator<&'a char> for KString<B> {
+impl<'a, B: HeapStr> FromIterator<&'a char> for String<B> {
     fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> Self {
-        let mut writer = KStringWriter::new();
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'a, B: HeapStr> FromIterator<&'a str> for KString<B> {
+impl<'a, B: HeapStr> FromIterator<&'a str> for String<B> {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> Self {
-        let mut writer = KStringWriter::new();
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<B: HeapStr> FromIterator<Box<str>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<B: HeapStr> FromIterator<Box<str>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'a, B: HeapStr> FromIterator<Cow<'a, str>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> KString<B> {
+impl<'a, B: HeapStr> FromIterator<Cow<'a, str>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String<B> {
         let mut iterator = iter.into_iter();
 
         match iterator.next() {
-            None => KString::new(),
+            None => String::new(),
             Some(cow) => {
                 let mut writer = cow.into_owned();
                 writer.extend(iterator);
@@ -302,49 +302,49 @@ impl<'a, B: HeapStr> FromIterator<Cow<'a, str>> for KString<B> {
     }
 }
 
-impl<'a, D: HeapStr, B: HeapStr> FromIterator<&'a KString<D>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = &'a KString<D>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<'a, D: HeapStr, B: HeapStr> FromIterator<&'a String<D>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = &'a String<D>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<D: HeapStr, B: HeapStr> FromIterator<KString<D>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = KString<D>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<D: HeapStr, B: HeapStr> FromIterator<String<D>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = String<D>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'a, 's, B: HeapStr, D: HeapStr> FromIterator<&'a KStringCow<'s, D>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = &'a KStringCow<'s, D>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<'a, 's, B: HeapStr, D: HeapStr> FromIterator<&'a StringCow<'s, D>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = &'a StringCow<'s, D>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'s, B: HeapStr, D: HeapStr> FromIterator<KStringCow<'s, D>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = KStringCow<'s, D>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<'s, B: HeapStr, D: HeapStr> FromIterator<StringCow<'s, D>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = StringCow<'s, D>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'a, 's, B: HeapStr> FromIterator<&'a KStringRef<'s>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = &'a KStringRef<'s>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<'a, 's, B: HeapStr> FromIterator<&'a StringRef<'s>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = &'a StringRef<'s>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
 }
 
-impl<'s, B: HeapStr> FromIterator<KStringRef<'s>> for KString<B> {
-    fn from_iter<I: IntoIterator<Item = KStringRef<'s>>>(iter: I) -> KString<B> {
-        let mut writer = KStringWriter::new();
+impl<'s, B: HeapStr> FromIterator<StringRef<'s>> for String<B> {
+    fn from_iter<I: IntoIterator<Item = StringRef<'s>>>(iter: I) -> String<B> {
+        let mut writer = StringWriter::new();
         writer.extend(iter);
         writer.into()
     }
@@ -355,100 +355,100 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_kstringwriter_new() {
-        let writer = KStringWriter::new();
-        assert!(matches!(writer, KStringWriter::Inline(_)));
+    fn test_stringwriter_new() {
+        let writer = StringWriter::new();
+        assert!(matches!(writer, StringWriter::Inline(_)));
     }
 
     #[test]
-    fn test_kstringwriter_push_char_inline() {
-        let mut writer = KStringWriter::new();
+    fn test_stringwriter_push_char_inline() {
+        let mut writer = StringWriter::new();
         writer.push('a');
         assert_eq!(writer.as_ref(), "a");
     }
 
     #[test]
-    fn test_kstringwriter_push_str_inline() {
-        let mut writer = KStringWriter::new();
+    fn test_stringwriter_push_str_inline() {
+        let mut writer = StringWriter::new();
         writer.push_str("abc");
         assert_eq!(writer.as_ref(), "abc");
     }
 
     #[test]
-    fn test_kstringwriter_push_char_to_owned() {
-        let mut writer = KStringWriter::new();
-        for _ in 0..=KString::MAX_INLINE_LEN {
+    fn test_stringwriter_push_char_to_owned() {
+        let mut writer = StringWriter::new();
+        for _ in 0..=String::MAX_INLINE_LEN {
             writer.push('a');
         }
-        assert!(matches!(writer, KStringWriter::Owned(_)));
-        assert_eq!(writer.as_ref(), "a".repeat(KString::MAX_INLINE_LEN + 1));
+        assert!(matches!(writer, StringWriter::Owned(_)));
+        assert_eq!(writer.as_ref(), "a".repeat(String::MAX_INLINE_LEN + 1));
     }
 
     #[test]
-    fn test_kstringwriter_push_str_to_owned() {
-        let mut writer = KStringWriter::new();
-        for _ in 0..=KString::MAX_INLINE_LEN / 3 {
+    fn test_stringwriter_push_str_to_owned() {
+        let mut writer = StringWriter::new();
+        for _ in 0..=String::MAX_INLINE_LEN / 3 {
             writer.push_str("abc");
         }
-        assert!(matches!(writer, KStringWriter::Owned(_)));
+        assert!(matches!(writer, StringWriter::Owned(_)));
         assert_eq!(
             writer.as_ref(),
-            "abc".repeat(KString::MAX_INLINE_LEN / 3 + 1)
+            "abc".repeat(String::MAX_INLINE_LEN / 3 + 1)
         );
     }
 
     #[test]
-    fn test_kstringwriter_reserve_inline() {
-        let mut writer = KStringWriter::new();
-        writer.reserve(KString::MAX_INLINE_LEN);
-        assert!(matches!(writer, KStringWriter::Inline(_)));
+    fn test_stringwriter_reserve_inline() {
+        let mut writer = StringWriter::new();
+        writer.reserve(String::MAX_INLINE_LEN);
+        assert!(matches!(writer, StringWriter::Inline(_)));
 
-        let mut writer = KStringWriter::new();
+        let mut writer = StringWriter::new();
         writer.push('a');
-        writer.reserve(KString::MAX_INLINE_LEN - 1);
-        assert!(matches!(writer, KStringWriter::Inline(_)));
+        writer.reserve(String::MAX_INLINE_LEN - 1);
+        assert!(matches!(writer, StringWriter::Inline(_)));
     }
 
     #[test]
-    fn test_kstringwriter_reserve_to_owned() {
-        let mut writer = KStringWriter::new();
-        writer.reserve(KString::MAX_INLINE_LEN + 1);
-        assert!(matches!(writer, KStringWriter::Owned(_)));
+    fn test_stringwriter_reserve_to_owned() {
+        let mut writer = StringWriter::new();
+        writer.reserve(String::MAX_INLINE_LEN + 1);
+        assert!(matches!(writer, StringWriter::Owned(_)));
 
-        let mut writer = KStringWriter::new();
+        let mut writer = StringWriter::new();
         writer.push('a');
-        writer.reserve(KString::MAX_INLINE_LEN);
-        assert!(matches!(writer, KStringWriter::Owned(_)));
+        writer.reserve(String::MAX_INLINE_LEN);
+        assert!(matches!(writer, StringWriter::Owned(_)));
     }
 
     #[test]
-    fn test_kstringwriter_from_writer_inline() {
-        let mut writer = KStringWriter::new();
+    fn test_stringwriter_from_writer_inline() {
+        let mut writer = StringWriter::new();
         writer.push_str("abc");
-        let kstring: KString = writer.into();
+        let kstring: String = writer.into();
         assert_eq!(&kstring, "abc");
     }
 
     #[test]
-    fn test_kstringwriter_from_writer_owned() {
-        let mut writer = KStringWriter::new();
-        for _ in 0..=KString::MAX_INLINE_LEN / 3 {
+    fn test_stringwriter_from_writer_owned() {
+        let mut writer = StringWriter::new();
+        for _ in 0..=String::MAX_INLINE_LEN / 3 {
             writer.push_str("abc");
         }
-        let kstring: KString = writer.into();
-        assert_eq!(&kstring, &"abc".repeat(KString::MAX_INLINE_LEN / 3 + 1));
+        let kstring: String = writer.into();
+        assert_eq!(&kstring, &"abc".repeat(String::MAX_INLINE_LEN / 3 + 1));
     }
 
     #[test]
-    fn test_kstringwriter_extend_char() {
-        let mut writer = KStringWriter::new();
+    fn test_stringwriter_extend_char() {
+        let mut writer = StringWriter::new();
         writer.extend("hello".chars());
         assert_eq!(writer.as_ref(), "hello");
     }
 
     #[test]
-    fn test_kstringwriter_extend_str() {
-        let mut writer = KStringWriter::new();
+    fn test_stringwriter_extend_str() {
+        let mut writer = StringWriter::new();
         writer.extend(["he", "ll", "o"]);
         assert_eq!(writer.as_ref(), "hello");
     }

@@ -5,28 +5,28 @@ use core::{
     ops::Deref,
     str::Utf8Error,
 };
-use std::{borrow::Borrow, ffi::OsStr, path::Path};
+use std::{borrow::Borrow, ffi::OsStr, path::Path, string::String as StdString};
 
 use crate::{
+    String, StringCow,
     backend::{BoxedStr, HeapStr},
-    KString, KStringCow,
 };
 
 /// A reference to a UTF-8 encoded, immutable string.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-pub struct KStringRef<'s> {
-    pub(crate) inner: KStringRefInner<'s>,
+pub struct StringRef<'s> {
+    pub(crate) inner: StringRefInner<'s>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum KStringRefInner<'s> {
+pub(crate) enum StringRefInner<'s> {
     Borrowed(&'s str),
     Singleton(&'static str),
 }
 
-impl<'s> KStringRef<'s> {
-    /// Create a new empty `KString`.
+impl<'s> StringRef<'s> {
+    /// Create a new empty `String`.
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
@@ -38,7 +38,7 @@ impl<'s> KStringRef<'s> {
     #[must_use]
     pub const fn from_static(other: &'static str) -> Self {
         Self {
-            inner: KStringRefInner::Singleton(other),
+            inner: StringRefInner::Singleton(other),
         }
     }
 
@@ -47,20 +47,20 @@ impl<'s> KStringRef<'s> {
     #[must_use]
     pub fn from_ref(other: &'s str) -> Self {
         Self {
-            inner: KStringRefInner::Borrowed(other),
+            inner: StringRefInner::Borrowed(other),
         }
     }
 
-    /// Creates a new `KStringRef` from a UTF-8 byte slice.
+    /// Creates a new `StringRef` from a UTF-8 byte slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringRef;
+    /// use lstring::StringRef;
     ///
     /// let bytes = [240, 159, 146, 150];
-    /// let kstr_ref = KStringRef::from_utf8(&bytes).unwrap();
-    /// assert_eq!(kstr_ref.as_str(), "💖");
+    /// let str_ref = StringRef::from_utf8(&bytes).unwrap();
+    /// assert_eq!(str_ref.as_str(), "💖");
     /// ```
     ///
     /// # Errors
@@ -71,7 +71,7 @@ impl<'s> KStringRef<'s> {
         core::str::from_utf8(v).map(Self::from_ref)
     }
 
-    /// Creates a new `KStringRef` from a UTF-8 byte slice without checking.
+    /// Creates a new `StringRef` from a UTF-8 byte slice without checking.
     ///
     /// # Safety
     ///
@@ -80,28 +80,28 @@ impl<'s> KStringRef<'s> {
     /// # Examples
     ///
     /// ```
-    /// use lstring::KStringRef;
+    /// use lstring::StringRef;
     ///
     /// let bytes = [240, 159, 146, 150];
-    /// let kstr_ref = unsafe { KStringRef::from_utf8_unchecked(&bytes) };
-    /// assert_eq!(kstr_ref.as_str(), "💖");
+    /// let str_ref = unsafe { StringRef::from_utf8_unchecked(&bytes) };
+    /// assert_eq!(str_ref.as_str(), "💖");
     /// ```
     #[cfg(feature = "unsafe")]
     #[inline]
     #[must_use]
     pub unsafe fn from_utf8_unchecked(v: &'s [u8]) -> Self {
-        Self::from_ref(core::str::from_utf8_unchecked(v))
+        Self::from_ref(unsafe { core::str::from_utf8_unchecked(v) })
     }
 
     /// Clone the data into an owned-type.
     #[inline]
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_owned<B: HeapStr>(&self) -> KString<B> {
+    pub fn to_owned<B: HeapStr>(&self) -> String<B> {
         self.inner.to_owned()
     }
 
-    /// Extracts a string slice containing the entire `KStringRef`.
+    /// Extracts a string slice containing the entire `StringRef`.
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
@@ -111,18 +111,18 @@ impl<'s> KStringRef<'s> {
     /// Convert to a mutable string type, cloning the data if necessary.
     #[inline]
     #[must_use]
-    pub fn into_mut(self) -> String {
-        self.inner.into_mut()
+    pub fn into_string(self) -> StdString {
+        self.inner.into_string()
     }
 }
 
-impl KStringRefInner<'_> {
+impl StringRefInner<'_> {
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    fn to_owned<B: HeapStr>(&self) -> KString<B> {
+    fn to_owned<B: HeapStr>(&self) -> String<B> {
         match self {
-            Self::Borrowed(s) => KString::from_ref(s),
-            Self::Singleton(s) => KString::from_static(s),
+            Self::Borrowed(s) => String::from_ref(s),
+            Self::Singleton(s) => String::from_static(s),
         }
     }
 
@@ -135,12 +135,12 @@ impl KStringRefInner<'_> {
     }
 
     #[inline]
-    fn into_mut(self) -> String {
+    fn into_string(self) -> StdString {
         self.as_str().to_owned()
     }
 }
 
-impl Deref for KStringRef<'_> {
+impl Deref for StringRef<'_> {
     type Target = str;
 
     #[inline]
@@ -149,150 +149,150 @@ impl Deref for KStringRef<'_> {
     }
 }
 
-impl Eq for KStringRef<'_> {}
+impl Eq for StringRef<'_> {}
 
-impl<'s> PartialEq<KStringRef<'s>> for KStringRef<'s> {
+impl<'s> PartialEq<StringRef<'s>> for StringRef<'s> {
     #[inline]
-    fn eq(&self, other: &KStringRef<'s>) -> bool {
+    fn eq(&self, other: &StringRef<'s>) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl PartialEq<str> for KStringRef<'_> {
+impl PartialEq<str> for StringRef<'_> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         PartialEq::eq(self.as_str(), other)
     }
 }
 
-impl<'s> PartialEq<&'s str> for KStringRef<'s> {
+impl<'s> PartialEq<&'s str> for StringRef<'s> {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_str(), *other)
     }
 }
 
-impl PartialEq<String> for KStringRef<'_> {
+impl PartialEq<String> for StringRef<'_> {
     #[inline]
     fn eq(&self, other: &String) -> bool {
         PartialEq::eq(self.as_str(), other.as_str())
     }
 }
 
-impl Ord for KStringRef<'_> {
+impl Ord for StringRef<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
-impl PartialOrd for KStringRef<'_> {
+impl PartialOrd for StringRef<'_> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Hash for KStringRef<'_> {
+impl Hash for StringRef<'_> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
 
-impl fmt::Debug for KStringRef<'_> {
+impl fmt::Debug for StringRef<'_> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, f)
     }
 }
 
-impl fmt::Display for KStringRef<'_> {
+impl fmt::Display for StringRef<'_> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
     }
 }
 
-impl AsRef<str> for KStringRef<'_> {
+impl AsRef<str> for StringRef<'_> {
     #[inline]
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl AsRef<[u8]> for KStringRef<'_> {
+impl AsRef<[u8]> for StringRef<'_> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl AsRef<OsStr> for KStringRef<'_> {
+impl AsRef<OsStr> for StringRef<'_> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (**self).as_ref()
     }
 }
 
-impl AsRef<Path> for KStringRef<'_> {
+impl AsRef<Path> for StringRef<'_> {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
-impl Borrow<str> for KStringRef<'_> {
+impl Borrow<str> for StringRef<'_> {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
     }
 }
 
-impl Default for KStringRef<'_> {
+impl Default for StringRef<'_> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KString<B>> for KStringRef<'s> {
+impl<'s, B: HeapStr> From<&'s String<B>> for StringRef<'s> {
     #[inline]
-    fn from(other: &'s KString<B>) -> Self {
+    fn from(other: &'s String<B>) -> Self {
         other.get_ref()
     }
 }
 
-impl<'s, B: HeapStr> From<&'s KStringCow<'s, B>> for KStringRef<'s> {
+impl<'s, B: HeapStr> From<&'s StringCow<'s, B>> for StringRef<'s> {
     #[inline]
-    fn from(other: &'s KStringCow<'s, B>) -> Self {
+    fn from(other: &'s StringCow<'s, B>) -> Self {
         other.get_ref()
     }
 }
 
-impl<'s> From<&'s String> for KStringRef<'s> {
+impl<'s> From<&'s StdString> for StringRef<'s> {
     #[inline]
-    fn from(other: &'s String) -> Self {
-        KStringRef::from_ref(other.as_str())
+    fn from(other: &'s StdString) -> Self {
+        StringRef::from_ref(other.as_str())
     }
 }
 
-impl<'s> From<&'s BoxedStr> for KStringRef<'s> {
+impl<'s> From<&'s BoxedStr> for StringRef<'s> {
     #[inline]
     fn from(other: &'s BoxedStr) -> Self {
         Self::from_ref(other)
     }
 }
 
-impl<'s> From<&'s str> for KStringRef<'s> {
+impl<'s> From<&'s str> for StringRef<'s> {
     #[inline]
     fn from(other: &'s str) -> Self {
-        KStringRef::from_ref(other)
+        StringRef::from_ref(other)
     }
 }
 
 #[cfg(feature = "serde")]
-impl serde::Serialize for KStringRef<'_> {
+impl serde::Serialize for StringRef<'_> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -303,19 +303,19 @@ impl serde::Serialize for KStringRef<'_> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de: 's, 's> serde::Deserialize<'de> for KStringRef<'s> {
+impl<'de: 's, 's> serde::Deserialize<'de> for StringRef<'s> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s: &'s str = serde::Deserialize::deserialize(deserializer)?;
-        let s = KStringRef::from_ref(s);
+        let s = StringRef::from_ref(s);
         Ok(s)
     }
 }
 
 #[cfg(feature = "quote")]
-impl quote::ToTokens for KStringRef<'_> {
+impl quote::ToTokens for StringRef<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         self.as_str().to_tokens(tokens);
     }
@@ -326,10 +326,10 @@ impl quote::ToTokens for KStringRef<'_> {
 #[diesel(foreign_derive)]
 #[diesel(sql_type = diesel::sql_types::Text)]
 #[allow(dead_code)]
-struct KStringRefProxy<'s>(KStringRef<'s>);
+struct StringRefProxy<'s>(StringRef<'s>);
 
 #[cfg(feature = "diesel")]
-impl<DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for KStringRef<'_>
+impl<DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for StringRef<'_>
 where
     DB: diesel::backend::Backend,
     str: diesel::serialize::ToSql<diesel::sql_types::Text, DB>,
@@ -349,6 +349,6 @@ mod test {
 
     #[test]
     fn test_size() {
-        println!("KStringRef: {}", size_of::<KStringRef<'static>>());
+        println!("StringRef: {}", size_of::<StringRef<'static>>());
     }
 }

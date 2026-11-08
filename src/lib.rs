@@ -4,23 +4,23 @@
 //!
 //! String creation
 //! ```rust
-//! # use lstring::{kformat, kstring, KString};
+//! # use lstring::{format, string, String};
 //! // Explicit (static)
-//! let literal = <KString>::from_static("literal");
+//! let literal = <String>::from_static("literal");
 //! // Using macro (static)
-//! let literal: KString = kstring!("literal");
+//! let literal: String = string!("literal");
 //! // Multiple literals will be concatenated
-//! const CONST_STRING: KString = kstring!("const", "ant");
+//! const CONST_STRING: String = string!("const", "ant");
 //! // Macro also accepts constants
 //! const HELLO_WORLD: &str = "Hello world!";
-//! static STATIC_STRING: KString = kstring!(HELLO_WORLD);
+//! static STATIC_STRING: String = string!(HELLO_WORLD);
 //!
 //! // Explicit (inline)
-//! let inline = <KString>::try_inline("stack").unwrap();
-//! let inline = <KString>::from_ref("stack");
+//! let inline = <String>::try_inline("stack").unwrap();
+//! let inline = <String>::from_ref("stack");
 //!
 //! // Formatted
-//! let formatted: KString = kformat!("Hello {literal} and {inline}");
+//! let formatted: String = format!("Hello {literal} and {inline}");
 //! ```
 //!
 //! # Background
@@ -35,19 +35,19 @@
 //!
 //! Ramifications:
 //! - Inline small strings rather than going to the heap.
-//! - Preserve `&'static str` across strings ([`KString`]),
-//!   references ([`KStringRef`]), and lifetime abstractions ([`KStringCow`]) to avoid
+//! - Preserve `&'static str` across strings ([`String`]),
+//!   references ([`StringRef`]), and lifetime abstractions ([`StringCow`]) to avoid
 //!   allocating for struct field names.
 //! - Use `Box<str>` rather than `String` to use less memory.
 //!
 //! Significant changes:
 //! - Because `From<&'static str>` is unsound it changed to `From<&str>`. To instantiate
-//!   from static str use [`KString::from_static`] instead of [`From::from`] (or [`kstring`](crate::kstring) macro).
+//!   from static str use [`String::from_static`] instead of [`From::from`] (or [`string`](crate::string) macro).
 //! - Added default generic to types `KStringBase` and `KStringCowBase` which renamed
-//!   to [`KString`] and [`KStringCow`]. Corresponding type aliases is removed. To instantiate
-//!   types with default backend wrap it with angle brackets (`KString::from_ref("abc")` =>
-//!   `<KString>::from_ref("abc")`).
-//! - Added `KStringWriter` and `kformat` macros. Also added `FromIterator` trait impls.
+//!   to [`String`] and [`StringCow`]. Corresponding type aliases is removed. To instantiate
+//!   types with default backend wrap it with angle brackets (`String::from_ref("abc")` =>
+//!   `<String>::from_ref("abc")`).
+//! - Added `StringWriter` and `format` macros. Also added `FromIterator` trait impls.
 //! - Added `from_utf8` and `from_utf16` functions.
 //!
 //! # Feature Flags
@@ -75,28 +75,28 @@ pub use string::*;
 pub use string_cow::*;
 pub use string_ref::*;
 
-/// Creates a `KString` from a static string literal.
+/// Creates a `String` from a static string literal.
 ///
-/// This macro is designed to create `KString` instances directly from string literals,
+/// This macro is designed to create `String` instances directly from string literals,
 /// leveraging the fact that these strings are static and can be safely managed without additional allocations.
 ///
 /// # Examples
 ///
 /// ```
-/// # use lstring::{KString, kstring};
+/// # use lstring::{String, string};
 ///
-/// let key1: KString = kstring!("example_key");
+/// let key1: String = string!("example_key");
 /// assert_eq!(key1, "example_key");
 ///
-/// let key2: KString = kstring!("example", "-", "key");
+/// let key2: String = string!("example", "-", "key");
 /// assert_eq!(key2, "example-key");
 ///
 /// const CONST_STR: &str = "example_key";
-/// let key3: KString = kstring!(CONST_STR);
+/// let key3: String = string!(CONST_STR);
 /// assert_eq!(key3, "example_key");
 ///
 /// static STATIC_STR: &str = "example-key";
-/// let key4: KString = kstring!(STATIC_STR);
+/// let key4: String = string!(STATIC_STR);
 /// assert_eq!(key4, "example-key");
 ///
 /// struct Strs<'a> {
@@ -109,20 +109,20 @@ pub use string_ref::*;
 ///     b: ["hello", "world"],
 /// };
 ///
-/// let key5: KString = kstring!(DATA.a);
+/// let key5: String = string!(DATA.a);
 /// assert_eq!(key5, "example");
-/// let key6: KString = kstring!(DATA.b[0]);
+/// let key6: String = string!(DATA.b[0]);
 /// assert_eq!(key6, "hello");
-/// let key7: KString = kstring!(DATA.b[1]);
+/// let key7: String = string!(DATA.b[1]);
 /// assert_eq!(key7, "world");
 /// ```
 #[macro_export]
-macro_rules! kstring {
+macro_rules! string {
     ($($str:literal),*) => {
-        $crate::KString::from_static(concat!($($str),*))
+        $crate::String::from_static(concat!($($str),*))
     };
     ($str:expr) => {
-        $crate::KString::from_static($str)
+        $crate::String::from_static($str)
     };
 }
 
