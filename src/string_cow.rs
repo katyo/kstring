@@ -11,11 +11,10 @@ use std::{
     borrow::{Borrow, Cow},
     ffi::OsStr,
     path::Path,
-    string::String as StdString,
 };
 
 use crate::{
-    String, StringRef, StringRefInner,
+    StdString, String, StringRef, StringRefInner,
     backend::{BoxedStr, DefaultStr, HeapStr},
 };
 
@@ -399,91 +398,6 @@ impl<B: HeapStr> FromStr for StringCow<'_, B> {
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from_string(s.into()))
-    }
-}
-
-#[cfg(feature = "serde")]
-mod serde_impl {
-    use super::{HeapStr, StringCow};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    impl<B: HeapStr> Serialize for StringCow<'_, B> {
-        #[inline]
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            serializer.serialize_str(self.as_str())
-        }
-    }
-
-    impl<'de, B: HeapStr> Deserialize<'de> for StringCow<'_, B> {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            String::deserialize(deserializer).map(|s| s.into())
-        }
-    }
-}
-
-#[cfg(feature = "quote")]
-impl<B: HeapStr> quote::ToTokens for StringCow<'_, B> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.as_str().to_tokens(tokens);
-    }
-}
-
-#[cfg(feature = "diesel")]
-mod diesel_impl {
-    use super::{HeapStr, String, StringCow};
-    use diesel::{
-        backend::Backend,
-        deserialize::{FromSql, FromSqlRow, Result as DeResult},
-        expression::AsExpression,
-        serialize::{Output, Result as SerResult, ToSql},
-        sql_types::Text,
-    };
-
-    #[derive(AsExpression, FromSqlRow)]
-    #[diesel(foreign_derive)]
-    #[diesel(sql_type = Text)]
-    #[allow(dead_code)]
-    struct StringCowProxy<'s, B>(StringCow<'s, B>);
-
-    #[cfg(feature = "unsafe")]
-    impl<B, ST, DB> FromSql<ST, DB> for StringCow<'_, B>
-    where
-        B: HeapStr,
-        DB: Backend,
-        *const str: FromSql<ST, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
-            String::from_sql(bytes).map(From::from)
-        }
-    }
-
-    #[cfg(not(feature = "unsafe"))]
-    impl<B, ST, DB> FromSql<ST, DB> for StringCow<'_, B>
-    where
-        B: HeapStr,
-        DB: Backend,
-        super::StdString: FromSql<ST, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
-            String::from_sql(bytes).map(From::from)
-        }
-    }
-
-    impl<B, DB> ToSql<Text, DB> for StringCow<'_, B>
-    where
-        B: HeapStr,
-        DB: Backend,
-        str: ToSql<Text, DB>,
-    {
-        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> SerResult {
-            self.as_str().to_sql(out)
-        }
     }
 }
 

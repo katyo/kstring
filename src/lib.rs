@@ -59,18 +59,35 @@
 #[cfg(not(feature = "std"))]
 compile_error!("`std` feature is required; reserved for future `no_std` support");
 
+#[cfg(feature = "diesel")]
+mod diesel_impl;
 mod format;
+#[cfg(feature = "unsafe")]
+#[path = "inner_unsafe.rs"]
+mod inner;
+#[cfg(not(feature = "unsafe"))]
+#[path = "inner_safe.rs"]
+mod inner;
 #[cfg(feature = "kstring")]
 mod interop;
+#[cfg(feature = "quote")]
+mod quote_impl;
+#[cfg(feature = "serde")]
+mod serde_impl;
 mod stack;
 mod string;
 mod string_cow;
 mod string_ref;
+#[cfg(feature = "zeroize")]
+mod zeroize_impl;
 
 pub mod backend;
 
+pub use backend::HeapStr;
 pub use format::*;
+use inner::StringInner;
 pub use stack::StackString;
+use std::string::String as StdString;
 pub use string::*;
 pub use string_cow::*;
 pub use string_ref::*;

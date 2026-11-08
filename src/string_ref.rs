@@ -5,10 +5,10 @@ use core::{
     ops::Deref,
     str::Utf8Error,
 };
-use std::{borrow::Borrow, ffi::OsStr, path::Path, string::String as StdString};
+use std::{borrow::Borrow, ffi::OsStr, path::Path};
 
 use crate::{
-    String, StringCow,
+    StdString, String, StringCow,
     backend::{BoxedStr, HeapStr},
 };
 
@@ -288,67 +288,6 @@ impl<'s> From<&'s str> for StringRef<'s> {
     #[inline]
     fn from(other: &'s str) -> Self {
         StringRef::from_ref(other)
-    }
-}
-
-#[cfg(feature = "serde")]
-mod serde_impl {
-    use super::StringRef;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    impl Serialize for StringRef<'_> {
-        #[inline]
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            serializer.serialize_str(self.as_str())
-        }
-    }
-
-    impl<'de: 's, 's> Deserialize<'de> for StringRef<'s> {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            let s: &'s str = Deserialize::deserialize(deserializer)?;
-            let s = StringRef::from_ref(s);
-            Ok(s)
-        }
-    }
-}
-
-#[cfg(feature = "quote")]
-impl quote::ToTokens for StringRef<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.as_str().to_tokens(tokens);
-    }
-}
-
-#[cfg(feature = "diesel")]
-mod diesel_impl {
-    use super::StringRef;
-    use diesel::{
-        backend::Backend,
-        expression::AsExpression,
-        serialize::{Output, Result as SerResult, ToSql},
-        sql_types::Text,
-    };
-
-    #[derive(AsExpression)]
-    #[diesel(foreign_derive)]
-    #[diesel(sql_type = Text)]
-    #[allow(dead_code)]
-    struct StringRefProxy<'s>(StringRef<'s>);
-
-    impl<DB> ToSql<Text, DB> for StringRef<'_>
-    where
-        DB: Backend,
-        str: ToSql<Text, DB>,
-    {
-        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> SerResult {
-            self.as_str().to_sql(out)
-        }
     }
 }
 

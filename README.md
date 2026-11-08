@@ -25,20 +25,20 @@ Considerations:
 
 Ramifications:
 - Inline small strings rather than going to the heap.
-- Preserve `&'static str` across strings (`KString`),
-  references (`KStringRef`), and lifetime abstractions (`KStringCow`) to avoid
+- Preserve `&'static str` across strings (`String`),
+  references (`StringRef`), and lifetime abstractions (`StringCow`) to avoid
   allocating for struct field names.
 - Use `Box<str>` rather than `String` to use less memory.
 
 Significant changes:
 - Because `From<&'static str>` is unsound it changed to `From<&str>`.
-  To instantiate from static str use `KString::from_static` instead of `From::from`
-  (or [`kstring`] macro).
+  To instantiate from static str use `String::from_static` instead of `From::from`
+  (or [`string`] macro).
 - Added default generic to types `KStringBase` and `KStringCowBase` which renamed
-  to `KString` and `KStringCow`. Corresponding type aliases is removed.
+  to `String` and `StringCow`. Corresponding type aliases is removed.
   To instantiate types with default backend wrap it with angle brackets
-  (`KString::from_ref("abc")` => `<KString>::from_ref("abc")`).
-- Added `KStringWriter` and `kformat` macros. Also added `FromIterator` trait impls
+  (`String::from_ref("abc")` => `<String>::from_ref("abc")`).
+- Added `StringWriter` and `format` macros. Also added `FromIterator` trait impls
 - Added `from_utf8` and `from_utf16` functions.
 
 Features:
