@@ -292,25 +292,29 @@ impl<'s> From<&'s str> for StringRef<'s> {
 }
 
 #[cfg(feature = "serde")]
-impl serde::Serialize for StringRef<'_> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
+mod serde_impl {
+    use super::StringRef;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[cfg(feature = "serde")]
-impl<'de: 's, 's> serde::Deserialize<'de> for StringRef<'s> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s: &'s str = serde::Deserialize::deserialize(deserializer)?;
-        let s = StringRef::from_ref(s);
-        Ok(s)
+    impl Serialize for StringRef<'_> {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.as_str())
+        }
+    }
+
+    impl<'de: 's, 's> Deserialize<'de> for StringRef<'s> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let s: &'s str = Deserialize::deserialize(deserializer)?;
+            let s = StringRef::from_ref(s);
+            Ok(s)
+        }
     }
 }
 
@@ -322,23 +326,29 @@ impl quote::ToTokens for StringRef<'_> {
 }
 
 #[cfg(feature = "diesel")]
-#[derive(diesel::expression::AsExpression)]
-#[diesel(foreign_derive)]
-#[diesel(sql_type = diesel::sql_types::Text)]
-#[allow(dead_code)]
-struct StringRefProxy<'s>(StringRef<'s>);
+mod diesel_impl {
+    use super::StringRef;
+    use diesel::{
+        backend::Backend,
+        expression::AsExpression,
+        serialize::{Output, Result as SerResult, ToSql},
+        sql_types::Text,
+    };
 
-#[cfg(feature = "diesel")]
-impl<DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for StringRef<'_>
-where
-    DB: diesel::backend::Backend,
-    str: diesel::serialize::ToSql<diesel::sql_types::Text, DB>,
-{
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, DB>,
-    ) -> diesel::serialize::Result {
-        self.as_str().to_sql(out)
+    #[derive(AsExpression)]
+    #[diesel(foreign_derive)]
+    #[diesel(sql_type = Text)]
+    #[allow(dead_code)]
+    struct StringRefProxy<'s>(StringRef<'s>);
+
+    impl<DB> ToSql<Text, DB> for StringRef<'_>
+    where
+        DB: Backend,
+        str: ToSql<Text, DB>,
+    {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> SerResult {
+            self.as_str().to_sql(out)
+        }
     }
 }
 

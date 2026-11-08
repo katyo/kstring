@@ -403,23 +403,27 @@ impl<B: HeapStr> FromStr for StringCow<'_, B> {
 }
 
 #[cfg(feature = "serde")]
-impl<B: HeapStr> serde::Serialize for StringCow<'_, B> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
+mod serde_impl {
+    use super::{HeapStr, StringCow};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[cfg(feature = "serde")]
-impl<'de, B: HeapStr> serde::Deserialize<'de> for StringCow<'_, B> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        String::deserialize(deserializer).map(|s| s.into())
+    impl<B: HeapStr> Serialize for StringCow<'_, B> {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.as_str())
+        }
+    }
+
+    impl<'de, B: HeapStr> Deserialize<'de> for StringCow<'_, B> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            String::deserialize(deserializer).map(|s| s.into())
+        }
     }
 }
 
@@ -431,36 +435,55 @@ impl<B: HeapStr> quote::ToTokens for StringCow<'_, B> {
 }
 
 #[cfg(feature = "diesel")]
-#[derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)]
-#[diesel(foreign_derive)]
-#[diesel(sql_type = diesel::sql_types::Text)]
-#[allow(dead_code)]
-struct StringCowProxy<'s, B>(StringCow<'s, B>);
+mod diesel_impl {
+    use super::{HeapStr, String, StringCow};
+    use diesel::{
+        backend::Backend,
+        deserialize::{FromSql, FromSqlRow, Result as DeResult},
+        expression::AsExpression,
+        serialize::{Output, Result as SerResult, ToSql},
+        sql_types::Text,
+    };
 
-#[cfg(feature = "diesel")]
-impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for StringCow<'_, B>
-where
-    B: HeapStr,
-    DB: diesel::backend::Backend,
-    *const str: diesel::deserialize::FromSql<ST, DB>,
-{
-    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        String::from_sql(bytes).map(From::from)
+    #[derive(AsExpression, FromSqlRow)]
+    #[diesel(foreign_derive)]
+    #[diesel(sql_type = Text)]
+    #[allow(dead_code)]
+    struct StringCowProxy<'s, B>(StringCow<'s, B>);
+
+    #[cfg(feature = "unsafe")]
+    impl<B, ST, DB> FromSql<ST, DB> for StringCow<'_, B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        *const str: FromSql<ST, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
+            String::from_sql(bytes).map(From::from)
+        }
     }
-}
 
-#[cfg(feature = "diesel")]
-impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for StringCow<'_, B>
-where
-    B: HeapStr,
-    DB: diesel::backend::Backend,
-    str: diesel::serialize::ToSql<diesel::sql_types::Text, DB>,
-{
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, DB>,
-    ) -> diesel::serialize::Result {
-        self.as_str().to_sql(out)
+    #[cfg(not(feature = "unsafe"))]
+    impl<B, ST, DB> FromSql<ST, DB> for StringCow<'_, B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        super::StdString: FromSql<ST, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
+            String::from_sql(bytes).map(From::from)
+        }
+    }
+
+    impl<B, DB> ToSql<Text, DB> for StringCow<'_, B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        str: ToSql<Text, DB>,
+    {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> SerResult {
+            self.as_str().to_sql(out)
+        }
     }
 }
 

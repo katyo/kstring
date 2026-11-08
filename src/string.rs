@@ -392,74 +392,77 @@ impl<B: HeapStr> zeroize::TryZeroize for String<B> {
 }
 
 #[cfg(feature = "serde")]
-impl<B: HeapStr> serde::Serialize for String<B> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
+mod serde_impl {
+    use super::{HeapStr, StdString, String};
+    use core::{fmt, marker::PhantomData, str::from_utf8};
+    use serde::{
+        Deserialize, Deserializer, Serialize, Serializer,
+        de::{Error, Unexpected, Visitor},
+    };
 
-#[cfg(feature = "serde")]
-impl<'de, B: HeapStr> serde::Deserialize<'de> for String<B> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_string(StringVisitor(core::marker::PhantomData))
-    }
-}
-
-#[cfg(feature = "serde")]
-struct StringVisitor<B>(core::marker::PhantomData<B>);
-
-#[cfg(feature = "serde")]
-impl<B: HeapStr> serde::de::Visitor<'_> for StringVisitor<B> {
-    type Value = String<B>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("a string")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(Self::Value::from_ref(v))
-    }
-
-    fn visit_string<E>(self, v: StdString) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(Self::Value::from_string(v))
-    }
-
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match core::str::from_utf8(v) {
-            Ok(s) => Ok(Self::Value::from_ref(s)),
-            Err(_) => Err(serde::de::Error::invalid_value(
-                serde::de::Unexpected::Bytes(v),
-                &self,
-            )),
+    impl<B: HeapStr> Serialize for String<B> {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.as_str())
         }
     }
 
-    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match StdString::from_utf8(v) {
-            Ok(s) => Ok(Self::Value::from_string(s)),
-            Err(e) => Err(serde::de::Error::invalid_value(
-                serde::de::Unexpected::Bytes(&e.into_bytes()),
-                &self,
-            )),
+    impl<'de, B: HeapStr> Deserialize<'de> for String<B> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_string(StringVisitor(PhantomData))
+        }
+    }
+
+    struct StringVisitor<B>(PhantomData<B>);
+
+    impl<B: HeapStr> Visitor<'_> for StringVisitor<B> {
+        type Value = String<B>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            Ok(Self::Value::from_ref(v))
+        }
+
+        fn visit_string<E>(self, v: StdString) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            Ok(Self::Value::from_string(v))
+        }
+
+        fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            match from_utf8(v) {
+                Ok(s) => Ok(Self::Value::from_ref(s)),
+                Err(_) => Err(Error::invalid_value(Unexpected::Bytes(v), &self)),
+            }
+        }
+
+        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            match StdString::from_utf8(v) {
+                Ok(s) => Ok(Self::Value::from_string(s)),
+                Err(e) => Err(Error::invalid_value(
+                    Unexpected::Bytes(&e.into_bytes()),
+                    &self,
+                )),
+            }
         }
     }
 }
@@ -472,44 +475,63 @@ impl<B: HeapStr> quote::ToTokens for String<B> {
 }
 
 #[cfg(feature = "diesel")]
-#[derive(diesel::expression::AsExpression, diesel::deserialize::FromSqlRow)]
-#[diesel(foreign_derive)]
-#[diesel(sql_type = diesel::sql_types::Text)]
-#[allow(dead_code)]
-struct StringProxy<B>(String<B>);
+mod diesel_impl {
+    use super::{HeapStr, String};
+    use diesel::{
+        backend::Backend,
+        deserialize::{FromSql, FromSqlRow, Result as DeResult},
+        expression::AsExpression,
+        serialize::{Output, Result as SerResult, ToSql},
+        sql_types::Text,
+    };
 
-#[cfg(feature = "diesel")]
-impl<B, ST, DB> diesel::deserialize::FromSql<ST, DB> for String<B>
-where
-    B: HeapStr,
-    DB: diesel::backend::Backend,
-    *const str: diesel::deserialize::FromSql<ST, DB>,
-{
-    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let str_ptr = <*const str as diesel::deserialize::FromSql<ST, DB>>::from_sql(bytes)?;
-        if !str_ptr.is_null() {
-            // SAFETY: We just checked that `str_ptr` is not null, and `from_sql()` should return
-            // a valid pointer to an `str`.
-            let string = unsafe { &*str_ptr };
-            Ok(Self::from_ref(string))
-        } else {
-            Ok(Default::default())
+    #[derive(AsExpression, FromSqlRow)]
+    #[diesel(foreign_derive)]
+    #[diesel(sql_type = Text)]
+    #[allow(dead_code)]
+    struct StringProxy<B>(String<B>);
+
+    #[cfg(feature = "unsafe")]
+    impl<B, ST, DB> FromSql<ST, DB> for String<B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        *const str: FromSql<ST, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
+            let str_ptr = <*const str as FromSql<ST, DB>>::from_sql(bytes)?;
+            if !str_ptr.is_null() {
+                // SAFETY: We just checked that `str_ptr` is not null, and `from_sql()` should return
+                // a valid pointer to an `str`.
+                let string = unsafe { &*str_ptr };
+                Ok(Self::from_ref(string))
+            } else {
+                Ok(Default::default())
+            }
         }
     }
-}
 
-#[cfg(feature = "diesel")]
-impl<B, DB> diesel::serialize::ToSql<diesel::sql_types::Text, DB> for String<B>
-where
-    B: HeapStr,
-    DB: diesel::backend::Backend,
-    str: diesel::serialize::ToSql<diesel::sql_types::Text, DB>,
-{
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, DB>,
-    ) -> diesel::serialize::Result {
-        self.as_str().to_sql(out)
+    #[cfg(not(feature = "unsafe"))]
+    impl<B, ST, DB> FromSql<ST, DB> for String<B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        super::StdString: FromSql<ST, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> DeResult<Self> {
+            <super::StdString as FromSql<ST, DB>>::from_sql(bytes).map(Self::from_string)
+        }
+    }
+
+    impl<B, DB> ToSql<Text, DB> for String<B>
+    where
+        B: HeapStr,
+        DB: Backend,
+        str: ToSql<Text, DB>,
+    {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> SerResult {
+            self.as_str().to_sql(out)
+        }
     }
 }
 
