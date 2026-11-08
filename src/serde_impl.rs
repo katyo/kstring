@@ -1,4 +1,4 @@
-use super::{HeapStr, StdString, String, StringCow, StringRef};
+use super::{HeapStr, SecureString, StdString, String, StringCow, StringRef};
 use core::{fmt, marker::PhantomData, str::from_utf8};
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
@@ -71,6 +71,27 @@ impl<B: HeapStr> Visitor<'_> for StringVisitor<B> {
     }
 }
 
+impl<B: HeapStr> Serialize for SecureString<B> {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, B: HeapStr> Deserialize<'de> for SecureString<B> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer
+            .deserialize_string(StringVisitor(PhantomData))
+            .map(From::from)
+    }
+}
+
 impl<B: HeapStr> Serialize for StringCow<'_, B> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -86,7 +107,7 @@ impl<'de, B: HeapStr> Deserialize<'de> for StringCow<'_, B> {
     where
         D: Deserializer<'de>,
     {
-        String::deserialize(deserializer).map(|s| s.into())
+        String::deserialize(deserializer).map(From::from)
     }
 }
 

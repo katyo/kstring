@@ -23,11 +23,11 @@ use crate::{
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct String<B = DefaultStr> {
-    inner: StringInner<B>,
+    pub(crate) inner: StringInner<B>,
 }
 
 impl<B> String<B> {
-    pub const EMPTY: Self = String::from_static("");
+    pub const EMPTY: Self = Self::from_static("");
 
     /// Create a new empty `String`.
     #[inline]

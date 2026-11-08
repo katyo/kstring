@@ -72,6 +72,8 @@ mod inner;
 mod interop;
 #[cfg(feature = "quote")]
 mod quote_impl;
+#[cfg(any(feature = "zeroize", feature = "unsafe"))]
+mod secure_string;
 #[cfg(feature = "serde")]
 mod serde_impl;
 mod stack;
@@ -86,6 +88,8 @@ pub mod backend;
 pub use backend::HeapStr;
 pub use format::*;
 use inner::StringInner;
+#[cfg(any(feature = "zeroize", feature = "unsafe"))]
+pub use secure_string::*;
 pub use stack::StackString;
 use std::string::String as StdString;
 pub use string::*;
